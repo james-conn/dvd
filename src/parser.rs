@@ -1,6 +1,6 @@
 // src/parser.rs
 use crate::lexer::Lexer;
-use crate::token::{KEYWORDS, Token, TokenType, is_modifier, is_setting, lookup_identifier};
+use crate::token::{KEYWORDS, Token, TokenType, is_modifier, is_setting};
 use anyhow::{Result, anyhow};
 use regex::Regex;
 use std::fmt;
@@ -202,30 +202,30 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_time(&mut self) -> String {
-        let mut time = String::new();
-
-        if self.peek_token.token_type == TokenType::Number {
-            time = self.peek_token.literal.clone();
+        let time = if self.peek_token.token_type == TokenType::Number {
+            let t = self.peek_token.literal.clone();
             self.next_token();
+            t
         } else {
             self.errors.push(ParseError {
                 token: self.current_token.clone(),
                 message: format!("Expected time after {}", self.current_token.literal),
             });
             return String::new();
-        }
+        };
 
+        let mut result = time;
         if matches!(
             self.peek_token.token_type,
             TokenType::Milliseconds | TokenType::Seconds | TokenType::Minutes
         ) {
-            time.push_str(&self.peek_token.literal);
+            result.push_str(&self.peek_token.literal);
             self.next_token();
         } else {
-            time.push('s');
+            result.push('s');
         }
 
-        time
+        result
     }
 
     fn parse_ctrl(&mut self) -> Result<Command> {
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
             self.next_token();
             let peek = self.peek_token.clone();
 
-            if let Some(keyword_type) = KEYWORDS.get(&peek.literal) {
+            if let Some(keyword_type) = KEYWORDS.get(&*peek.literal) {
                 if is_modifier(keyword_type) {
                     if !in_modifier_chain {
                         return Err(anyhow!("Modifiers must come before other characters"));
@@ -576,22 +576,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_source(&mut self) -> Result<Vec<Command>> {
-        let cmd = Command {
-            command_type: TokenType::Source,
-            options: String::new(),
-            args: String::new(),
-            source: String::new(),
-        };
-
         if self.peek_token.token_type != TokenType::String {
             self.next_token();
             return Err(anyhow!("Expected path after Source"));
         }
 
-        let src_path = &self.peek_token.literal;
+        // Clone the path to avoid borrowing issues
+        let src_path = self.peek_token.literal.clone();
 
         // Check if path has .tape extension
-        let path = Path::new(src_path);
+        let path = Path::new(&src_path);
         if path.extension().map_or(true, |ext| ext != "tape") {
             self.next_token();
             return Err(anyhow!("Expected file with .tape extension"));
@@ -604,7 +598,7 @@ impl<'a> Parser<'a> {
         }
 
         // Read and parse source tape
-        let src_content = fs::read_to_string(src_path)
+        let src_content = fs::read_to_string(&src_path)
             .map_err(|_| anyhow!("Unable to read file: {}", src_path))?;
 
         if src_content.is_empty() {
