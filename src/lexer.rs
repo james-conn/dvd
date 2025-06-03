@@ -13,6 +13,7 @@ pub struct Lexer<'source> {
 }
 
 impl<'a> Lexer<'a> {
+    /// Create a new lexer using the source input
     pub fn new(input: &'a str) -> Self {
         let mut lexer = Lexer {
             input,
@@ -34,13 +35,17 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Peek one char ahead
     fn peek_char(&mut self) -> Option<char> {
         self.chars.peek().copied()
     }
 
+    /// Skip to the next token
     pub fn next_token(&mut self) -> Token {
+        // We can ignore whitespace...
         self.skip_whitespace();
 
+        // Initialize a default token at the current line/column
         let mut token = Token {
             token_type: TokenType::Eof,
             literal: String::new(),
@@ -49,6 +54,7 @@ impl<'a> Lexer<'a> {
         };
 
         match self.current_char {
+            // No token, we've reached the end
             None => {
                 token.token_type = TokenType::Eof;
                 token.literal = "\0".to_string();
@@ -118,7 +124,9 @@ impl<'a> Lexer<'a> {
                 token.literal = self.read_string('/');
                 self.read_char();
             }
+            // The fallback case when it's not a semantic token and instead arbitrary
             Some(ch) => {
+                // Stand up and pay attention if it's either a straight-up number, or some kind of fraction.
                 if ch.is_ascii_digit()
                     || (ch == '.' && self.peek_char().map_or(false, |c| c.is_ascii_digit()))
                 {
@@ -187,8 +195,9 @@ impl<'a> Lexer<'a> {
 
     fn read_number(&mut self) -> String {
         let start_pos = self.position - 1;
+        // Iterate until the next char is no longer a number
         while self
-            .current_char
+            .current_char // TODO: Recognize an invalid sequence and throw an error or an optional here. For a case like (0.0.0.0) -- which seems valid in this parsing logic so far
             .map_or(false, |ch| ch.is_ascii_digit() || ch == '.')
         {
             self.read_char();
