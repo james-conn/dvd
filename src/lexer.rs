@@ -27,6 +27,7 @@ impl<'a> Lexer<'a> {
         lexer
     }
 
+    /// Consume and increment
     fn read_char(&mut self) {
         self.column += 1;
         self.current_char = self.chars.next();
@@ -96,7 +97,8 @@ impl<'a> Lexer<'a> {
             }
             Some('{') => {
                 token.token_type = TokenType::Json;
-                token.literal = "{".to_string() + &self.read_json() + "}";
+                // TODO: Make this much more robust. Currently doesn't even try to handle JSON escaping
+                token.literal = "{".to_string() + &self.read_string('}') + "}";
                 self.read_char();
             }
             Some('`') => {
@@ -128,9 +130,11 @@ impl<'a> Lexer<'a> {
                     token.literal = self.read_number();
                     token.token_type = TokenType::Number;
                 } else if ch.is_alphabetic() {
+                    // Okay, it's probably a string, look ahead and see if this has an ID we know of.
                     token.literal = self.read_identifier();
                     token.token_type = lookup_identifier(&token.literal);
                 } else {
+                    // We can't find anything, this is an illegal token.
                     token = self.new_token(TokenType::Illegal, ch);
                     self.read_char();
                 }
@@ -140,6 +144,7 @@ impl<'a> Lexer<'a> {
         token
     }
 
+    /// Helper function for creation of a new token cheaply
     fn new_token(&self, token_type: TokenType, ch: char) -> Token {
         Token {
             token_type,
@@ -156,6 +161,7 @@ impl<'a> Lexer<'a> {
             if self
                 .current_char
                 .map_or(true, |ch| ch == '\n' || ch == '\r')
+            // Read until some kind of carrige return and then break.
             {
                 break;
             }
@@ -163,6 +169,7 @@ impl<'a> Lexer<'a> {
         self.input[start_pos..self.position - 1].to_string()
     }
 
+    /// Read a string until an end char. Useful for text within some kind of braces.
     fn read_string(&mut self, end_char: char) -> String {
         let start_pos = self.position;
         loop {
