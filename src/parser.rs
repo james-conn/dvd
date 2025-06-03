@@ -55,18 +55,8 @@ impl<'source> Parser<'source> {
         let mut parser = Parser {
             lexer,
             errors: Vec::new(),
-            current_token: Token {
-                token_type: TokenType::Eof,
-                literal: String::new(),
-                line: 0,
-                column: 0,
-            },
-            peek_token: Token {
-                token_type: TokenType::Eof,
-                literal: String::new(),
-                line: 0,
-                column: 0,
-            },
+            current_token: Token::default(),
+            peek_token: Token::default(),
         };
 
         // Read two tokens so current_token and peek_token are both set
