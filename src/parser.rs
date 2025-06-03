@@ -565,68 +565,68 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_source(&mut self) -> Result<Vec<Command>> {
-        if self.peek_token.token_type != TokenType::String {
-            self.next_token();
-            return Err(anyhow!("Expected path after Source"));
-        }
+    // fn parse_source(&mut self) -> Result<Vec<Command>> {
+    //     if self.peek_token.token_type != TokenType::String {
+    //         self.next_token();
+    //         return Err(anyhow!("Expected path after Source"));
+    //     }
 
-        // Clone the path to avoid borrowing issues
-        let src_path = self.peek_token.literal.clone();
+    //     // Clone the path to avoid borrowing issues
+    //     let src_path = self.peek_token.literal.clone();
 
-        // Check if path has .tape extension
-        let path = Path::new(&src_path);
-        if path.extension().map_or(true, |ext| ext != "tape") {
-            self.next_token();
-            return Err(anyhow!("Expected file with .tape extension"));
-        }
+    //     // Check if path has .tape extension
+    //     let path = Path::new(&src_path);
+    //     if path.extension().map_or(true, |ext| ext != "tape") {
+    //         self.next_token();
+    //         return Err(anyhow!("Expected file with .tape extension"));
+    //     }
 
-        // Check if tape exists
-        if !path.exists() {
-            self.next_token();
-            return Err(anyhow!("File {} not found", src_path));
-        }
+    //     // Check if tape exists
+    //     if !path.exists() {
+    //         self.next_token();
+    //         return Err(anyhow!("File {} not found", src_path));
+    //     }
 
-        // Read and parse source tape
-        let src_content = fs::read_to_string(&src_path)
-            .map_err(|_| anyhow!("Unable to read file: {}", src_path))?;
+    //     // Read and parse source tape
+    //     let src_content = fs::read_to_string(&src_path)
+    //         .map_err(|_| anyhow!("Unable to read file: {}", src_path))?;
 
-        if src_content.is_empty() {
-            self.next_token();
-            return Err(anyhow!("Source tape: {} is empty", src_path));
-        }
+    //     if src_content.is_empty() {
+    //         self.next_token();
+    //         return Err(anyhow!("Source tape: {} is empty", src_path));
+    //     }
 
-        let mut src_lexer = Lexer::new(&src_content);
-        let mut src_parser = Parser::new(&mut src_lexer);
-        let src_commands = src_parser.parse();
+    //     let mut src_lexer = Lexer::new(&src_content);
+    //     let mut src_parser = Parser::new(&mut src_lexer);
+    //     let src_commands = src_parser.parse();
 
-        // Check for nested source commands
-        for cmd in &src_commands {
-            if cmd.command_type == TokenType::Source {
-                self.next_token();
-                return Err(anyhow!("Nested Source detected"));
-            }
-        }
+    //     // Check for nested source commands
+    //     for cmd in &src_commands {
+    //         if cmd.command_type == TokenType::Source {
+    //             self.next_token();
+    //             return Err(anyhow!("Nested Source detected"));
+    //         }
+    //     }
 
-        // Check for errors in source
-        if !src_parser.errors().is_empty() {
-            self.next_token();
-            return Err(anyhow!(
-                "{} has {} errors",
-                src_path,
-                src_parser.errors().len()
-            ));
-        }
+    //     // Check for errors in source
+    //     if !src_parser.errors().is_empty() {
+    //         self.next_token();
+    //         return Err(anyhow!(
+    //             "{} has {} errors",
+    //             src_path,
+    //             src_parser.errors().len()
+    //         ));
+    //     }
 
-        // Filter out Output and Source commands
-        let filtered: Vec<Command> = src_commands
-            .into_iter()
-            .filter(|cmd| !matches!(cmd.command_type, TokenType::Source | TokenType::Output))
-            .collect();
+    //     // Filter out Output and Source commands
+    //     let filtered: Vec<Command> = src_commands
+    //         .into_iter()
+    //         .filter(|cmd| !matches!(cmd.command_type, TokenType::Source | TokenType::Output))
+    //         .collect();
 
-        self.next_token();
-        Ok(filtered)
-    }
+    //     self.next_token();
+    //     Ok(filtered)
+    // }
 
     fn parse_screenshot(&mut self) -> Result<Command> {
         let mut cmd = Command {
