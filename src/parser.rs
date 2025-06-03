@@ -76,7 +76,7 @@ impl<'source> Parser<'source> {
             }
 
             match self.parse_command() {
-                Ok(mut cmds) => commands.append(&mut cmds),
+                Ok(cmds) => commands.push(cmds),
                 Err(e) => {
                     self.errors.push(ParseError {
                         token: self.current_token.clone(),
@@ -94,7 +94,7 @@ impl<'source> Parser<'source> {
         &self.errors
     }
 
-    fn parse_command(&mut self) -> Result<Vec<Command>> {
+    fn parse_command(&mut self) -> Result<Command> {
         match self.current_token.token_type {
             TokenType::Space
             | TokenType::Backspace
@@ -108,25 +108,24 @@ impl<'source> Parser<'source> {
             | TokenType::Right
             | TokenType::Up
             | TokenType::PageUp
-            | TokenType::PageDown => Ok(vec![
-                self.parse_keypress(self.current_token.token_type.clone())?,
-            ]),
-            TokenType::Set => Ok(vec![self.parse_set()?]),
-            TokenType::Output => Ok(vec![self.parse_output()?]),
-            TokenType::Sleep => Ok(vec![self.parse_sleep()?]),
-            TokenType::Type => Ok(vec![self.parse_type()?]),
-            TokenType::Ctrl => Ok(vec![self.parse_ctrl()?]),
-            TokenType::Alt => Ok(vec![self.parse_alt()?]),
-            TokenType::Shift => Ok(vec![self.parse_shift()?]),
-            TokenType::Hide => Ok(vec![self.parse_hide()?]),
-            TokenType::Require => Ok(vec![self.parse_require()?]),
-            TokenType::Show => Ok(vec![self.parse_show()?]),
-            TokenType::Wait => Ok(vec![self.parse_wait()?]),
-            TokenType::Source => self.parse_source(),
-            TokenType::Screenshot => Ok(vec![self.parse_screenshot()?]),
-            TokenType::Copy => Ok(vec![self.parse_copy()?]),
-            TokenType::Paste => Ok(vec![self.parse_paste()?]),
-            TokenType::Env => Ok(vec![self.parse_env()?]),
+            | TokenType::PageDown => {
+                Ok(self.parse_keypress(self.current_token.token_type.clone())?)
+            }
+            TokenType::Set => Ok(self.parse_set()?),
+            TokenType::Output => Ok(self.parse_output()?),
+            TokenType::Sleep => Ok(self.parse_sleep()?),
+            TokenType::Type => Ok(self.parse_type()?),
+            TokenType::Ctrl => Ok(self.parse_ctrl()?),
+            TokenType::Alt => Ok(self.parse_alt()?),
+            TokenType::Shift => Ok(self.parse_shift()?),
+            TokenType::Hide => Ok(self.parse_hide()?),
+            TokenType::Require => Ok(self.parse_require()?),
+            TokenType::Show => Ok(self.parse_show()?),
+            TokenType::Wait => Ok(self.parse_wait()?),
+            TokenType::Screenshot => Ok(self.parse_screenshot()?),
+            TokenType::Copy => Ok(self.parse_copy()?),
+            TokenType::Paste => Ok(self.parse_paste()?),
+            TokenType::Env => Ok(self.parse_env()?),
             _ => Err(anyhow!("Invalid command: {}", self.current_token.literal)),
         }
     }

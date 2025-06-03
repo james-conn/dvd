@@ -85,7 +85,6 @@ pub enum TokenType {
     Require,
     Set,
     Show,
-    Source,
     Type,
     Screenshot,
     Copy,
@@ -192,7 +191,6 @@ pub static KEYWORDS: LazyLock<HashMap<Cow<'static, str>, TokenType>> = LazyLock:
     m.insert(Cow::Borrowed("WaitTimeout"), TokenType::WaitTimeout);
     m.insert(Cow::Borrowed("WaitPattern"), TokenType::WaitPattern);
     m.insert(Cow::Borrowed("Wait"), TokenType::Wait);
-    m.insert(Cow::Borrowed("Source"), TokenType::Source);
     m.insert(Cow::Borrowed("CursorBlink"), TokenType::CursorBlink);
     m.insert(Cow::Borrowed("true"), TokenType::Boolean);
     m.insert(Cow::Borrowed("false"), TokenType::Boolean);
@@ -250,7 +248,6 @@ pub fn is_command(token_type: &TokenType) -> bool {
             | TokenType::Insert
             | TokenType::End
             | TokenType::Ctrl
-            | TokenType::Source
             | TokenType::Screenshot
             | TokenType::Copy
             | TokenType::Paste
