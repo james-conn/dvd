@@ -3,9 +3,9 @@ use crate::token::{Token, TokenType, lookup_identifier};
 use std::iter::Peekable;
 use std::str::Chars;
 
-pub struct Lexer<'a> {
-    input: &'a str,
-    chars: Peekable<Chars<'a>>,
+pub struct Lexer<'source> {
+    input: &'source str,
+    chars: Peekable<Chars<'source>>,
     current_char: Option<char>,
     position: usize,
     line: usize,
