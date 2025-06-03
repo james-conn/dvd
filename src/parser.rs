@@ -151,7 +151,7 @@ impl<'source> Parser<'source> {
             cmd.args = "Line".to_string();
         }
 
-        cmd.options = self.parse_speed();
+        cmd.options = format!("{}ms", self.parse_speed().as_millis());
         if !cmd.options.is_empty() {
             // In a real implementation, you'd parse the duration here
             // For now, just check it's not empty
@@ -171,12 +171,12 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_speed(&mut self) -> String {
+    fn parse_speed(&mut self) -> Duration {
         if self.peek_token.token_type == TokenType::At {
             self.next_token();
             self.parse_time()
         } else {
-            String::new()
+            Duration::default()
         }
     }
 
@@ -349,7 +349,7 @@ impl<'source> Parser<'source> {
             args: String::new(),
             source: String::new(),
         };
-        cmd.options = self.parse_speed();
+        cmd.options = format!("{}ms", self.parse_speed().as_millis());
         cmd.args = self.parse_repeat();
         Ok(cmd)
     }
@@ -398,7 +398,7 @@ impl<'source> Parser<'source> {
 
         match self.current_token.token_type {
             TokenType::WaitTimeout => {
-                cmd.args = self.parse_time();
+                cmd.args = format!("{}ms", self.parse_speed().as_millis());
             }
             TokenType::WaitPattern => {
                 cmd.args = self.peek_token.literal.clone();
@@ -451,7 +451,7 @@ impl<'source> Parser<'source> {
         let cmd = Command {
             command_type: TokenType::Sleep,
             options: String::new(),
-            args: self.parse_time(),
+            args: format!("{}ms", self.parse_speed().as_millis()),
             source: String::new(),
         };
         Ok(cmd)
@@ -500,7 +500,7 @@ impl<'source> Parser<'source> {
             source: String::new(),
         };
 
-        cmd.options = self.parse_speed();
+        cmd.options = format!("{}ms", self.parse_speed().as_millis());
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("{} expects string", self.current_token.literal));
