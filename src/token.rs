@@ -268,6 +268,9 @@ pub fn to_camel(s: &str) -> String {
         .join("")
 }
 
-pub fn lookup_identifier(ident: &str) -> TokenType {
-    KEYWORDS.get(ident).cloned().unwrap_or(TokenType::String)
+pub fn lookup_identifier(identifier: &str) -> TokenType {
+    KEYWORDS
+        .get(identifier)
+        .cloned()
+        .unwrap_or(TokenType::String)
 }
