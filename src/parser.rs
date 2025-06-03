@@ -43,15 +43,15 @@ impl fmt::Display for Command {
     }
 }
 
-pub struct Parser<'a> {
-    lexer: &'a mut Lexer<'a>,
+pub struct Parser<'source> {
+    lexer: &'source mut Lexer<'source>,
     errors: Vec<ParseError>,
     current_token: Token,
     peek_token: Token,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(lexer: &'a mut Lexer<'a>) -> Self {
+impl<'source> Parser<'source> {
+    pub fn new(lexer: &'source mut Lexer<'source>) -> Self {
         let mut parser = Parser {
             lexer,
             errors: Vec::new(),
