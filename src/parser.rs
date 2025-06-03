@@ -152,10 +152,6 @@ impl<'source> Parser<'source> {
         }
 
         cmd.options = format!("{}ms", self.parse_speed().as_millis());
-        if !cmd.options.is_empty() {
-            // In a real implementation, you'd parse the duration here
-            // For now, just check it's not empty
-        }
 
         if self.peek_token.token_type == TokenType::Regex {
             self.next_token();
