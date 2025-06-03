@@ -75,7 +75,7 @@ impl<'source> Parser<'source> {
                 continue;
             }
 
-            match self.parse_command() {
+            match self.get_current_command() {
                 Ok(cmds) => commands.push(cmds),
                 Err(e) => {
                     self.errors.push(ParseError {
@@ -94,7 +94,7 @@ impl<'source> Parser<'source> {
         &self.errors
     }
 
-    fn parse_command(&mut self) -> Result<Command> {
+    fn get_current_command(&mut self) -> Result<Command> {
         match self.current_token.token_type {
             TokenType::Space
             | TokenType::Backspace
