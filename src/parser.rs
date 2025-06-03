@@ -190,31 +190,38 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_time(&mut self) -> String {
-        let time = if self.peek_token.token_type == TokenType::Number {
-            let t = self.peek_token.literal.clone();
+    fn parse_time(&mut self) -> Duration {
+        // get the user provided integer value for the time
+        let provided_time: u64 = if self.peek_token.token_type == TokenType::Number {
+            let base = self.peek_token.literal.clone();
             self.next_token();
-            t
+            base.parse().unwrap()
         } else {
+            // If the next token is not a number, this is invalid.
             self.errors.push(ParseError {
                 token: self.current_token.clone(),
                 message: format!("Expected time after {}", self.current_token.literal),
             });
-            return String::new();
+            return Duration::default();
         };
 
-        let mut result = time;
+        // Check for time unit and create Duration accordingly
         if matches!(
             self.peek_token.token_type,
             TokenType::Milliseconds | TokenType::Seconds | TokenType::Minutes
         ) {
-            result.push_str(&self.peek_token.literal);
-            self.next_token();
+            let duration = match self.peek_token.token_type {
+                TokenType::Milliseconds => Duration::from_millis(provided_time),
+                TokenType::Minutes => Duration::from_secs(provided_time * 60),
+                TokenType::Seconds => Duration::from_secs(provided_time),
+                _ => unreachable!(), // We should have already matched above
+            };
+            self.next_token(); // Advance past the time unit token
+            duration
         } else {
-            result.push('s');
+            // Default to seconds if no marker is denoted
+            Duration::from_secs(provided_time)
         }
-
-        result
     }
 
     fn parse_ctrl(&mut self) -> Result<Command> {
