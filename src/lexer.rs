@@ -132,7 +132,7 @@ impl<'a> Lexer<'a> {
                 {
                     token.literal = self.read_number();
                     token.token_type = TokenType::Number;
-                } else if ch.is_alphabetic() || ch == '.' {
+                } else if ch.is_alphabetic() {
                     token.literal = self.read_identifier();
                     token.token_type = lookup_identifier(&token.literal);
                 } else {
