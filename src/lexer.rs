@@ -177,17 +177,6 @@ impl<'a> Lexer<'a> {
         self.input[start_pos..self.position - 1].to_string()
     }
 
-    fn read_json(&mut self) -> String {
-        let start_pos = self.position;
-        loop {
-            self.read_char();
-            if self.current_char.map_or(true, |ch| ch == '}') {
-                break;
-            }
-        }
-        self.input[start_pos..self.position - 1].to_string()
-    }
-
     fn read_number(&mut self) -> String {
         let start_pos = self.position - 1;
         let mut seen_dot = false;
