@@ -454,14 +454,6 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_sleep_time(&mut self) -> Duration {
-        if self.peek_token.token_type == TokenType::Number {
-            self.parse_time()
-        } else {
-            Duration::default()
-        }
-    }
-
     fn parse_hide(&mut self) -> Result<Command> {
         Ok(Command {
             command_type: TokenType::Hide,
