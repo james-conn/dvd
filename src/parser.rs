@@ -186,11 +186,12 @@ impl<'source> Parser<'source> {
         }
     }
 
+    /// Helper function that gets the corresponding duration from a time
     fn parse_time(&mut self) -> Duration {
         // get the user provided integer value for the time
-        let provided_time: u64 = if self.peek_token.token_type == TokenType::Number {
+        let provided_time: f64 = if self.peek_token.token_type == TokenType::Number {
             let base = self.peek_token.literal.clone();
-            self.next_token();
+            self.next_token(); // consume the number
             base.parse().unwrap()
         } else {
             // If the next token is not a number, this is invalid.
@@ -207,16 +208,16 @@ impl<'source> Parser<'source> {
             TokenType::Milliseconds | TokenType::Seconds | TokenType::Minutes
         ) {
             let duration = match self.peek_token.token_type {
-                TokenType::Milliseconds => Duration::from_millis(provided_time),
-                TokenType::Minutes => Duration::from_secs(provided_time * 60),
-                TokenType::Seconds => Duration::from_secs(provided_time),
+                TokenType::Milliseconds => Duration::from_millis(provided_time as u64),
+                TokenType::Seconds => Duration::from_secs(provided_time as u64),
+                TokenType::Minutes => Duration::from_secs((provided_time * 60.0) as u64),
                 _ => unreachable!(), // We should have already matched above
             };
             self.next_token(); // Advance past the time unit token
             duration
         } else {
             // Default to seconds if no marker is denoted
-            Duration::from_secs(provided_time)
+            Duration::from_secs(provided_time as u64)
         }
     }
 
@@ -451,6 +452,14 @@ impl<'source> Parser<'source> {
             source: String::new(),
         };
         Ok(cmd)
+    }
+
+    fn parse_sleep_time(&mut self) -> Duration {
+        if self.peek_token.token_type == TokenType::Number {
+            self.parse_time()
+        } else {
+            Duration::default()
+        }
     }
 
     fn parse_hide(&mut self) -> Result<Command> {
