@@ -46,12 +46,7 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
 
         // Initialize a default token at the current line/column
-        let mut token = Token {
-            token_type: TokenType::Eof,
-            literal: String::new(),
-            line: self.line,
-            column: self.column,
-        };
+        let mut token = Token::default();
 
         match self.current_char {
             // No token, we've reached the end

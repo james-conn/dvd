@@ -10,6 +10,17 @@ pub struct Token {
     pub column: usize,
 }
 
+impl Default for Token {
+    fn default() -> Self {
+        Token {
+            token_type: TokenType::Illegal,
+            literal: String::new(),
+            line: 1,
+            column: 1,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenType {
     // Operators
