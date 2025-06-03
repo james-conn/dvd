@@ -4,8 +4,8 @@ use crate::token::{KEYWORDS, Token, TokenType, is_modifier, is_setting};
 use anyhow::{Result, anyhow};
 use regex::Regex;
 use std::fmt;
-use std::fs;
 use std::path::Path;
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct ParseError {
@@ -59,7 +59,7 @@ impl<'source> Parser<'source> {
             peek_token: Token::default(),
         };
 
-        // Read two tokens so current_token and peek_token are both set
+        // Read at least two tokens so current_token and peek_token are both set
         parser.next_token();
         parser.next_token();
 
@@ -70,6 +70,7 @@ impl<'source> Parser<'source> {
         let mut commands = Vec::new();
 
         while self.current_token.token_type != TokenType::Eof {
+            // Skipping comments
             if self.current_token.token_type == TokenType::Comment {
                 self.next_token();
                 continue;
@@ -90,6 +91,7 @@ impl<'source> Parser<'source> {
         commands
     }
 
+    /// Get an array of the current errors.
     pub fn errors(&self) -> &[ParseError] {
         &self.errors
     }
@@ -153,8 +155,10 @@ impl<'source> Parser<'source> {
 
         cmd.options = format!("{}ms", self.parse_speed().as_millis());
 
+        // Handle wait regex
         if self.peek_token.token_type == TokenType::Regex {
             self.next_token();
+            // Make sure it's valid
             if let Err(_) = Regex::new(&self.current_token.literal) {
                 return Err(anyhow!(
                     "Invalid regular expression '{}': invalid regex",
@@ -169,7 +173,7 @@ impl<'source> Parser<'source> {
 
     fn parse_speed(&mut self) -> Duration {
         if self.peek_token.token_type == TokenType::At {
-            self.next_token();
+            self.next_token(); // consume the '@'
             self.parse_time()
         } else {
             Duration::default()
