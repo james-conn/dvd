@@ -18,7 +18,7 @@ pub struct Cli {
     /// Input tape file (use "-" for stdin)
     pub file: Option<PathBuf>,
 
-    /// Publish your GIF to vhs.charm.sh and get a shareable URL
+    /// Publish your GIF to yeet and get a shareable URL
     #[arg(short, long)]
     pub publish: bool,
 
