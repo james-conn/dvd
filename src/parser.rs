@@ -30,7 +30,6 @@ pub struct Command {
     pub command_type: TokenType,
     pub options: String,
     pub args: String,
-    pub source: String,
 }
 
 impl fmt::Display for Command {
@@ -137,7 +136,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Wait,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         if self.peek_token.token_type == TokenType::Plus {
@@ -283,7 +281,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Ctrl,
             options: String::new(),
             args: args.join(" "),
-            source: String::new(),
         })
     }
 
@@ -304,7 +301,6 @@ impl<'source> Parser<'source> {
                     command_type: TokenType::Alt,
                     options: String::new(),
                     args: c,
-                    source: String::new(),
                 });
             }
         }
@@ -332,7 +328,6 @@ impl<'source> Parser<'source> {
                     command_type: TokenType::Shift,
                     options: String::new(),
                     args: c,
-                    source: String::new(),
                 });
             }
         }
@@ -348,7 +343,6 @@ impl<'source> Parser<'source> {
             command_type,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
         cmd.options = format!("{}ms", self.parse_speed().as_millis());
         cmd.args = self.parse_repeat();
@@ -360,7 +354,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Output,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         if self.peek_token.token_type != TokenType::String {
@@ -387,7 +380,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Set,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         if is_setting(&self.peek_token.token_type) {
@@ -453,7 +445,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Sleep,
             options: String::new(),
             args: format!("{}ms", self.parse_speed().as_millis()),
-            source: String::new(),
         };
         Ok(cmd)
     }
@@ -463,7 +454,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Hide,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         })
     }
 
@@ -472,7 +462,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Require,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         if self.peek_token.token_type != TokenType::String {
@@ -489,7 +478,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Show,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         })
     }
 
@@ -498,7 +486,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Type,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         cmd.options = format!("{}ms", self.parse_speed().as_millis());
@@ -524,7 +511,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Copy,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         if self.peek_token.token_type != TokenType::String {
@@ -548,7 +534,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Paste,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         })
     }
 
@@ -557,7 +542,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Env,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         cmd.options = self.peek_token.literal.clone();
@@ -640,7 +624,6 @@ impl<'source> Parser<'source> {
             command_type: TokenType::Screenshot,
             options: String::new(),
             args: String::new(),
-            source: String::new(),
         };
 
         if self.peek_token.token_type != TokenType::String {
