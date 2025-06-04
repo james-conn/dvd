@@ -10,6 +10,22 @@ enum Outputs {
     CSV,
 }
 
+impl Outputs {
+    fn from_extension(ext: &str) -> Option<Self> {
+        match ext.to_lowercase().as_str() {
+            "mp4" | "mov" | "avi" | "mkv" | "webm" => Some(Self::Movie),
+            "gif" => Some(Self::Gif),
+            "svg" => Some(Self::SVG),
+            "csv" => Some(Self::CSV),
+            _ => None,
+        }
+    }
+
+    fn allowed_extensions() -> &'static [&'static str] {
+        &["mp4", "mov", "avi", "mkv", "webm", "gif", "svg", "csv"]
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "vhs")]
 #[command(about = "Run a given tape file and generates its outputs.")]
