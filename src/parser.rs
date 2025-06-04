@@ -57,7 +57,7 @@ pub enum CommandArg {
     EnvVarName(String),
 
     // For setting values
-    Height(u32),
+    Height,
     FontSize(u32),
     Padding(u32),
     LoopOffset(String),
@@ -78,7 +78,7 @@ impl fmt::Display for CommandArg {
             CommandArg::RegexPattern(pattern) => write!(f, "/{}/", pattern),
             CommandArg::KeyCombination(combo) => write!(f, "{}", combo),
             CommandArg::EnvVarName(var) => write!(f, "${}", var),
-            CommandArg::Height(h) => write!(f, "{}px", h),
+            CommandArg::Height => write!(f, "height"),
             CommandArg::FontSize(size) => write!(f, "{}pt", size),
             CommandArg::Padding(pad) => write!(f, "{}px", pad),
             CommandArg::LoopOffset(offset) => write!(f, "{}", offset),
@@ -238,10 +238,10 @@ impl<'source> Parser<'source> {
             {
                 return Err(anyhow!("Wait+ expects Line or Screen"));
             }
-            args.push(self.peek_token.literal.clone());
+            args.push(CommandArg::WaitMode(self.peek_token.literal.clone()));
             self.next_token();
         } else {
-            args.push("Line".to_string());
+            args.push(CommandArg::WaitMode("Line".to_string()));
         }
 
         let speed = self.parse_speed();
@@ -259,7 +259,7 @@ impl<'source> Parser<'source> {
                     self.current_token.literal
                 ));
             }
-            args.push(self.current_token.literal.clone());
+            args.push(CommandArg::RegexPattern(self.current_token.literal.clone()));
         }
 
         cmd.args = Some(args);
@@ -275,13 +275,13 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_repeat(&mut self) -> Vec<String> {
+    fn parse_repeat(&mut self) -> Vec<CommandArg> {
         if self.peek_token.token_type == TokenType::Number {
-            let count = self.peek_token.literal.clone();
+            let count: u32 = self.peek_token.literal.parse().unwrap_or(1);
             self.next_token();
-            vec![count]
+            vec![CommandArg::Repititions(count)]
         } else {
-            vec!["1".to_string()]
+            vec![CommandArg::Repititions(1)]
         }
     }
 
@@ -333,7 +333,7 @@ impl<'source> Parser<'source> {
                     if !in_modifier_chain {
                         return Err(anyhow!("Modifiers must come before other characters"));
                     }
-                    args.push(peek.literal);
+                    args.push(CommandArg::KeyCombination(peek.literal));
                     self.next_token();
                     continue;
                 }
@@ -351,10 +351,10 @@ impl<'source> Parser<'source> {
                 | TokenType::RightBracket
                 | TokenType::Caret
                 | TokenType::Backslash => {
-                    args.push(peek.literal);
+                    args.push(CommandArg::KeyCombination(peek.literal));
                 }
                 TokenType::String if peek.literal.len() == 1 => {
-                    args.push(peek.literal);
+                    args.push(CommandArg::KeyCombination(peek.literal));
                 }
                 _ => {
                     return Err(anyhow!(
@@ -397,7 +397,7 @@ impl<'source> Parser<'source> {
                 return Ok(Command {
                     command_type: TokenType::Alt,
                     option: None,
-                    args: Some(vec![c]),
+                    args: Some(vec![CommandArg::KeyCombination(c)]),
                 });
             }
         }
@@ -424,7 +424,7 @@ impl<'source> Parser<'source> {
                 return Ok(Command {
                     command_type: TokenType::Shift,
                     option: None,
-                    args: Some(vec![c]),
+                    args: Some(vec![CommandArg::KeyCombination(c)]),
                 });
             }
         }
@@ -472,7 +472,7 @@ impl<'source> Parser<'source> {
             }
         }
 
-        cmd.args = Some(vec![self.peek_token.literal.clone()]);
+        cmd.args = Some(vec![CommandArg::FilePath(self.peek_token.literal.clone())]);
         self.next_token();
         Ok(cmd)
     }
@@ -485,7 +485,7 @@ impl<'source> Parser<'source> {
         };
 
         if is_setting(&self.peek_token.token_type) {
-            cmd.args = Some(vec![self.peek_token.literal.clone()]);
+            cmd.args = Some(vec![CommandArg::Text(self.peek_token.literal.clone())]);
         } else {
             return Err(anyhow!("Unknown setting: {}", self.peek_token.literal));
         }
@@ -554,6 +554,7 @@ impl<'source> Parser<'source> {
                 cmd.option = Some(CommandOption::Scale(
                     self.peek_token.literal.clone().parse()?,
                 ));
+                cmd.args = Some(vec![CommandArg::Height]);
                 self.next_token();
             }
             TokenType::CursorBlink => {
@@ -611,7 +612,7 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("{} expects one string", self.current_token.literal));
         }
 
-        cmd.args = Some(vec![self.peek_token.literal.clone()]);
+        cmd.args = Some(vec![CommandArg::FilePath(self.peek_token.literal.clone())]);
         self.next_token();
         Ok(cmd)
     }
@@ -643,7 +644,7 @@ impl<'source> Parser<'source> {
         let mut args = Vec::new();
         while self.peek_token.token_type == TokenType::String {
             self.next_token();
-            args.push(self.current_token.literal.clone());
+            args.push(CommandArg::Text(self.current_token.literal.clone()));
         }
 
         cmd.args = Some(args);
@@ -664,7 +665,7 @@ impl<'source> Parser<'source> {
         let mut args = Vec::new();
         while self.peek_token.token_type == TokenType::String {
             self.next_token();
-            args.push(self.current_token.literal.clone());
+            args.push(CommandArg::Text(self.current_token.literal.clone()));
         }
 
         cmd.args = Some(args);
@@ -692,7 +693,9 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
-        cmd.args = Some(vec![self.peek_token.literal.clone()]);
+        cmd.args = Some(vec![CommandArg::EnvVarName(
+            self.peek_token.literal.clone(),
+        )]);
         self.next_token();
         Ok(cmd)
     }
@@ -715,7 +718,7 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("Expected file with .png extension"));
         }
 
-        cmd.args = Some(vec![self.peek_token.literal.clone()]);
+        cmd.args = Some(vec![CommandArg::FilePath(self.peek_token.literal.clone())]);
         self.next_token();
         Ok(cmd)
     }
