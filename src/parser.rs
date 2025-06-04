@@ -441,10 +441,16 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_sleep(&mut self) -> Result<Command> {
+        let duration = if self.peek_token.token_type == TokenType::Number {
+            self.parse_time()
+        } else {
+            Duration::default()
+        };
+
         let cmd = Command {
             command_type: TokenType::Sleep,
             options: String::new(),
-            args: format!("{}ms", self.parse_speed().as_millis()),
+            args: format!("{}ms", duration.as_millis()),
         };
         Ok(cmd)
     }
