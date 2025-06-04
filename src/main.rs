@@ -55,12 +55,9 @@ fn validate_output_path(path_str: &str) -> Result<PathBuf, String> {
 
 #[derive(Parser)]
 #[command(name = "vhs")]
-#[command(about = "Run a given tape file and generates its outputs.")]
+#[command(about = "Manage your .dvd or .tape files")]
 #[command(version)]
 pub struct Cli {
-    /// Input tape file (use "-" for stdin)
-    pub file: Option<PathBuf>,
-
     /// Publish your GIF to yeet and get a shareable URL
     #[arg(short, long)]
     pub publish: bool,
@@ -69,12 +66,8 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
-    /// File name(s) of video output
-    #[arg(short, long, value_name = "FILE", value_parser = validate_output_path)]
-    pub output: Vec<PathBuf>,
-
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Commands,
 }
 
 fn default_shell() -> String {
