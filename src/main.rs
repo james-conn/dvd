@@ -88,6 +88,15 @@ pub enum Commands {
         markdown: bool,
     },
 
+    Burn {
+        /// File name(s) of video output
+        #[arg(short, long, value_name = "FILE", value_parser = validate_output_path)]
+        output: Vec<PathBuf>,
+
+        /// Input tape file (use "-" for stdin)
+        file: Option<PathBuf>,
+    },
+
     /// Create a new tape file by recording your actions
     Record {
         /// Shell for recording
@@ -122,6 +131,7 @@ pub enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
     let input = r#"
     Output examples/gum/pager.gif
 
