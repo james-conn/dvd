@@ -27,7 +27,8 @@ impl std::error::Error for ParseError {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CommandOption {
-    Time(Duration),
+    Rate(Duration),
+    Scale(u32),
     Immediate,
     Format(String),
     TypingSpeed(u16),
