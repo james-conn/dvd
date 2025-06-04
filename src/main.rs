@@ -52,6 +52,13 @@ pub enum Commands {
         shell: String,
     },
 
+    /// Play a tape file
+    Play {
+        /// Files to play (sequentially)
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+    },
+
     /// Create a new tape file with example tape file contents and documentation
     New {
         /// Name of the new tape file
