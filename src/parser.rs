@@ -50,15 +50,21 @@ impl fmt::Display for CommandOption {
 pub struct Command {
     pub command_type: TokenType,
     pub option: Option<CommandOption>,
-    pub args: String,
+    pub args: Option<Vec<String>>,
 }
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(options) = &self.option {
-            write!(f, "{} {} {}", self.command_type, options, self.args)
+        let args_str = if let Some(args) = &self.args {
+            args.join(" ")
         } else {
-            write!(f, "{} {}", self.command_type, self.args)
+            String::new()
+        };
+
+        if let Some(options) = &self.option {
+            write!(f, "{} {} {}", self.command_type, options, args_str)
+        } else {
+            write!(f, "{} {}", self.command_type, args_str)
         }
     }
 }
@@ -156,8 +162,10 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Wait,
             option: None,
-            args: String::new(),
+            args: None,
         };
+
+        let mut args = Vec::new();
 
         if self.peek_token.token_type == TokenType::Plus {
             self.next_token();
@@ -166,10 +174,10 @@ impl<'source> Parser<'source> {
             {
                 return Err(anyhow!("Wait+ expects Line or Screen"));
             }
-            cmd.args = self.peek_token.literal.clone();
+            args.push(self.peek_token.literal.clone());
             self.next_token();
         } else {
-            cmd.args = "Line".to_string();
+            args.push("Line".to_string());
         }
 
         let speed = self.parse_speed();
@@ -187,9 +195,10 @@ impl<'source> Parser<'source> {
                     self.current_token.literal
                 ));
             }
-            cmd.args = format!("{} {}", cmd.args, self.current_token.literal);
+            args.push(self.current_token.literal.clone());
         }
 
+        cmd.args = Some(args);
         Ok(cmd)
     }
 
@@ -202,13 +211,13 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_repeat(&mut self) -> String {
+    fn parse_repeat(&mut self) -> Vec<String> {
         if self.peek_token.token_type == TokenType::Number {
             let count = self.peek_token.literal.clone();
             self.next_token();
-            count
+            vec![count]
         } else {
-            "1".to_string()
+            vec!["1".to_string()]
         }
     }
 
@@ -304,7 +313,7 @@ impl<'source> Parser<'source> {
         Ok(Command {
             command_type: TokenType::Ctrl,
             option: None,
-            args: args.join(" "),
+            args: Some(args),
         })
     }
 
@@ -324,7 +333,7 @@ impl<'source> Parser<'source> {
                 return Ok(Command {
                     command_type: TokenType::Alt,
                     option: None,
-                    args: c,
+                    args: Some(vec![c]),
                 });
             }
         }
@@ -351,7 +360,7 @@ impl<'source> Parser<'source> {
                 return Ok(Command {
                     command_type: TokenType::Shift,
                     option: None,
-                    args: c,
+                    args: Some(vec![c]),
                 });
             }
         }
@@ -366,7 +375,7 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         let speed = self.parse_speed();
@@ -374,7 +383,7 @@ impl<'source> Parser<'source> {
             cmd.option = Some(CommandOption::Rate(speed));
         }
 
-        cmd.args = self.parse_repeat();
+        cmd.args = Some(self.parse_repeat());
         Ok(cmd)
     }
 
@@ -382,7 +391,7 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Output,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         if self.peek_token.token_type != TokenType::String {
@@ -399,7 +408,7 @@ impl<'source> Parser<'source> {
             }
         }
 
-        cmd.args = self.peek_token.literal.clone();
+        cmd.args = Some(vec![self.peek_token.literal.clone()]);
         self.next_token();
         Ok(cmd)
     }
@@ -408,11 +417,11 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Set,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         if is_setting(&self.peek_token.token_type) {
-            cmd.args = self.peek_token.literal.clone();
+            cmd.args = Some(vec![self.peek_token.literal.clone()]);
         } else {
             return Err(anyhow!("Unknown setting: {}", self.peek_token.literal));
         }
@@ -509,7 +518,7 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Sleep,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         if duration != Duration::default() {
@@ -523,7 +532,7 @@ impl<'source> Parser<'source> {
         Ok(Command {
             command_type: TokenType::Hide,
             option: None,
-            args: String::new(),
+            args: None,
         })
     }
 
@@ -531,14 +540,14 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Require,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("{} expects one string", self.current_token.literal));
         }
 
-        cmd.args = self.peek_token.literal.clone();
+        cmd.args = Some(vec![self.peek_token.literal.clone()]);
         self.next_token();
         Ok(cmd)
     }
@@ -547,7 +556,7 @@ impl<'source> Parser<'source> {
         Ok(Command {
             command_type: TokenType::Show,
             option: None,
-            args: String::new(),
+            args: None,
         })
     }
 
@@ -555,7 +564,7 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Type,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         let speed = self.parse_speed();
@@ -567,15 +576,13 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
+        let mut args = Vec::new();
         while self.peek_token.token_type == TokenType::String {
             self.next_token();
-            cmd.args.push_str(&self.current_token.literal);
-
-            if self.peek_token.token_type == TokenType::String {
-                cmd.args.push(' ');
-            }
+            args.push(self.current_token.literal.clone());
         }
 
+        cmd.args = Some(args);
         Ok(cmd)
     }
 
@@ -583,22 +590,20 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Copy,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
+        let mut args = Vec::new();
         while self.peek_token.token_type == TokenType::String {
             self.next_token();
-            cmd.args.push_str(&self.current_token.literal);
-
-            if self.peek_token.token_type == TokenType::String {
-                cmd.args.push(' ');
-            }
+            args.push(self.current_token.literal.clone());
         }
 
+        cmd.args = Some(args);
         Ok(cmd)
     }
 
@@ -606,7 +611,7 @@ impl<'source> Parser<'source> {
         Ok(Command {
             command_type: TokenType::Paste,
             option: None,
-            args: String::new(),
+            args: None,
         })
     }
 
@@ -614,7 +619,7 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Env,
             option: Some(CommandOption::Format(self.peek_token.literal.clone())),
-            args: String::new(),
+            args: None,
         };
 
         self.next_token();
@@ -623,7 +628,7 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
-        cmd.args = self.peek_token.literal.clone();
+        cmd.args = Some(vec![self.peek_token.literal.clone()]);
         self.next_token();
         Ok(cmd)
     }
@@ -632,7 +637,7 @@ impl<'source> Parser<'source> {
         let mut cmd = Command {
             command_type: TokenType::Screenshot,
             option: None,
-            args: String::new(),
+            args: None,
         };
 
         if self.peek_token.token_type != TokenType::String {
@@ -646,7 +651,7 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("Expected file with .png extension"));
         }
 
-        cmd.args = self.peek_token.literal.clone();
+        cmd.args = Some(vec![self.peek_token.literal.clone()]);
         self.next_token();
         Ok(cmd)
     }
