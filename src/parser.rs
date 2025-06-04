@@ -36,7 +36,8 @@ pub enum CommandOption {
 impl fmt::Display for CommandOption {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CommandOption::Time(duration) => write!(f, "{}ms", duration.as_millis()),
+            CommandOption::Rate(duration) => write!(f, "{}ms", duration.as_millis()),
+            CommandOption::Scale(scale) => write!(f, "{}scale", scale),
             CommandOption::Immediate => write!(f, "immediate"),
             CommandOption::Format(format) => write!(f, "{}", format),
             CommandOption::TypingSpeed(speed) => write!(f, "{}wpm", speed),
@@ -172,7 +173,7 @@ impl<'source> Parser<'source> {
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.options = Some(CommandOption::Time(speed));
+            cmd.options = Some(CommandOption::Rate(speed));
         }
 
         // Handle wait regex
@@ -369,7 +370,7 @@ impl<'source> Parser<'source> {
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.options = Some(CommandOption::Time(speed));
+            cmd.options = Some(CommandOption::Rate(speed));
         }
 
         cmd.args = self.parse_repeat();
@@ -420,7 +421,7 @@ impl<'source> Parser<'source> {
             TokenType::WaitTimeout => {
                 let duration = self.parse_speed();
                 if duration != Duration::default() {
-                    cmd.options = Some(CommandOption::Time(duration));
+                    cmd.options = Some(CommandOption::Rate(duration));
                 }
             }
             TokenType::WaitPattern => {
@@ -463,6 +464,24 @@ impl<'source> Parser<'source> {
                     }
                 }
             }
+            TokenType::FontSize => {
+                cmd.options = Some(CommandOption::Scale(
+                    self.peek_token.literal.clone().parse()?,
+                ));
+                self.next_token();
+            }
+            TokenType::Padding => {
+                cmd.options = Some(CommandOption::Scale(
+                    self.peek_token.literal.clone().parse()?,
+                ));
+                self.next_token();
+            }
+            TokenType::Height => {
+                cmd.options = Some(CommandOption::Scale(
+                    self.peek_token.literal.clone().parse()?,
+                ));
+                self.next_token();
+            }
             TokenType::CursorBlink => {
                 cmd.options = Some(CommandOption::Format(self.peek_token.literal.clone()));
                 self.next_token();
@@ -493,7 +512,7 @@ impl<'source> Parser<'source> {
         };
 
         if duration != Duration::default() {
-            cmd.options = Some(CommandOption::Time(duration));
+            cmd.options = Some(CommandOption::Rate(duration));
         }
 
         Ok(cmd)
@@ -540,7 +559,7 @@ impl<'source> Parser<'source> {
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.options = Some(CommandOption::Time(speed));
+            cmd.options = Some(CommandOption::Rate(speed));
         }
 
         if self.peek_token.token_type != TokenType::String {
