@@ -33,6 +33,72 @@ pub enum CommandOption {
     TypingSpeed(u16),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum CommandArg {
+    // For repeat counts (like Up 5, Down 3, etc.)
+    Repititions(u32),
+
+    // For text content in Type commands
+    Text(String),
+
+    // For file paths in Output, Screenshot, Require commands
+    FilePath(String),
+
+    // For wait modes ("Line" or "Screen")
+    WaitMode(String),
+
+    // For regex patterns in Wait commands
+    RegexPattern(String),
+
+    // For control/alt/shift key combinations
+    KeyCombination(String),
+
+    // For environment variable names
+    EnvVarName(String),
+
+    // For setting values
+    Height(u32),
+    FontSize(u32),
+    Padding(u32),
+    LoopOffset(String),
+    WaitPattern(String),
+    CursorBlink(bool),
+
+    // For boolean settings
+    Yes(bool),
+}
+
+impl fmt::Display for CommandArg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CommandArg::Repititions(count) => write!(f, "{}", count),
+            CommandArg::Text(text) => write!(f, "\"{}\"", text),
+            CommandArg::FilePath(path) => write!(f, "{}", path),
+            CommandArg::WaitMode(mode) => write!(f, "{}", mode),
+            CommandArg::RegexPattern(pattern) => write!(f, "/{}/", pattern),
+            CommandArg::KeyCombination(combo) => write!(f, "{}", combo),
+            CommandArg::EnvVarName(var) => write!(f, "${}", var),
+            CommandArg::Height(h) => write!(f, "{}px", h),
+            CommandArg::FontSize(size) => write!(f, "{}pt", size),
+            CommandArg::Padding(pad) => write!(f, "{}px", pad),
+            CommandArg::LoopOffset(offset) => write!(f, "{}", offset),
+            CommandArg::WaitPattern(pattern) => write!(f, "{}", pattern),
+            CommandArg::CursorBlink(blink) => write!(f, "{}", blink),
+            CommandArg::Yes(val) => write!(f, "{}", val),
+        }
+    }
+}
+
+// Helper method to join multiple CommandArgs for display implementation
+impl CommandArg {
+    pub fn join_args(args: &[CommandArg]) -> String {
+        args.iter()
+            .map(|arg| arg.to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
 impl fmt::Display for CommandOption {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -48,13 +114,13 @@ impl fmt::Display for CommandOption {
 pub struct Command {
     pub command_type: TokenType,
     pub option: Option<CommandOption>,
-    pub args: Option<Vec<String>>,
+    pub args: Option<Vec<CommandArg>>,
 }
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let args_str = if let Some(args) = &self.args {
-            args.join(" ")
+            CommandArg::join_args(args)
         } else {
             String::new()
         };
