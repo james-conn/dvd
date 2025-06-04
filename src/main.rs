@@ -26,6 +26,33 @@ impl Outputs {
     }
 }
 
+fn validate_output_path(path_str: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(path_str);
+
+    // Get the extension of the provided path
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .ok_or_else(|| {
+            format!(
+                "Output file '{}' must have a valid extension. Allowed extensions: {}",
+                path_str,
+                Outputs::allowed_extensions().join(", ")
+            )
+        })?;
+
+    // Check if that provided path extension is valid agaisnt the allowed ones.
+    Outputs::from_extension(extension).ok_or_else(|| {
+        format!(
+            "Unsupported output format '{}'. Allowed extensions: {}",
+            extension,
+            Outputs::allowed_extensions().join(", ")
+        )
+    })?;
+
+    Ok(path)
+}
+
 #[derive(Parser)]
 #[command(name = "vhs")]
 #[command(about = "Run a given tape file and generates its outputs.")]
@@ -43,8 +70,8 @@ pub struct Cli {
     pub quiet: bool,
 
     /// File name(s) of video output
-    #[arg(short, long, value_name = "FILE")]
-    pub output: Vec<String>,
+    #[arg(short, long, value_name = "FILE", value_parser = validate_output_path)]
+    pub output: Vec<PathBuf>,
 
     #[command(subcommand)]
     pub command: Option<Commands>,
