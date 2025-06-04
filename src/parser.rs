@@ -49,13 +49,13 @@ impl fmt::Display for CommandOption {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Command {
     pub command_type: TokenType,
-    pub options: Option<CommandOption>,
+    pub option: Option<CommandOption>,
     pub args: String,
 }
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(options) = &self.options {
+        if let Some(options) = &self.option {
             write!(f, "{} {} {}", self.command_type, options, self.args)
         } else {
             write!(f, "{} {}", self.command_type, self.args)
@@ -155,7 +155,7 @@ impl<'source> Parser<'source> {
     fn parse_wait(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Wait,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
@@ -174,7 +174,7 @@ impl<'source> Parser<'source> {
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.options = Some(CommandOption::Rate(speed));
+            cmd.option = Some(CommandOption::Rate(speed));
         }
 
         // Handle wait regex
@@ -303,7 +303,7 @@ impl<'source> Parser<'source> {
 
         Ok(Command {
             command_type: TokenType::Ctrl,
-            options: None,
+            option: None,
             args: args.join(" "),
         })
     }
@@ -323,7 +323,7 @@ impl<'source> Parser<'source> {
                 self.next_token();
                 return Ok(Command {
                     command_type: TokenType::Alt,
-                    options: None,
+                    option: None,
                     args: c,
                 });
             }
@@ -350,7 +350,7 @@ impl<'source> Parser<'source> {
                 self.next_token();
                 return Ok(Command {
                     command_type: TokenType::Shift,
-                    options: None,
+                    option: None,
                     args: c,
                 });
             }
@@ -365,13 +365,13 @@ impl<'source> Parser<'source> {
     fn parse_keypress(&mut self, command_type: TokenType) -> Result<Command> {
         let mut cmd = Command {
             command_type,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.options = Some(CommandOption::Rate(speed));
+            cmd.option = Some(CommandOption::Rate(speed));
         }
 
         cmd.args = self.parse_repeat();
@@ -381,7 +381,7 @@ impl<'source> Parser<'source> {
     fn parse_output(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Output,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
@@ -391,9 +391,9 @@ impl<'source> Parser<'source> {
 
         let path = Path::new(&self.peek_token.literal);
         if let Some(ext) = path.extension() {
-            cmd.options = Some(CommandOption::Format(format!(".{}", ext.to_string_lossy())));
+            cmd.option = Some(CommandOption::Format(format!(".{}", ext.to_string_lossy())));
         } else {
-            cmd.options = Some(CommandOption::Format(".png".to_string()));
+            cmd.option = Some(CommandOption::Format(".png".to_string()));
             if !self.peek_token.literal.ends_with('/') {
                 return Err(anyhow!("Expected folder with trailing slash"));
             }
@@ -407,7 +407,7 @@ impl<'source> Parser<'source> {
     fn parse_set(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Set,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
@@ -422,11 +422,11 @@ impl<'source> Parser<'source> {
             TokenType::WaitTimeout => {
                 let duration = self.parse_speed();
                 if duration != Duration::default() {
-                    cmd.options = Some(CommandOption::Rate(duration));
+                    cmd.option = Some(CommandOption::Rate(duration));
                 }
             }
             TokenType::WaitPattern => {
-                cmd.options = Some(CommandOption::Format(self.peek_token.literal.clone()));
+                cmd.option = Some(CommandOption::Format(self.peek_token.literal.clone()));
                 if let Err(_) = Regex::new(&self.peek_token.literal) {
                     return Err(anyhow!(
                         "Invalid regexp pattern: {}",
@@ -442,7 +442,7 @@ impl<'source> Parser<'source> {
                 if self.peek_token.token_type == TokenType::Percent {
                     self.next_token();
                 }
-                cmd.options = Some(CommandOption::Format(offset));
+                cmd.option = Some(CommandOption::Format(offset));
             }
             TokenType::TypingSpeed => {
                 let speed_str = self.peek_token.literal.clone();
@@ -454,44 +454,44 @@ impl<'source> Parser<'source> {
                     TokenType::Milliseconds | TokenType::Seconds
                 ) {
                     let format_str = format!("{}{}", speed_str, self.peek_token.literal);
-                    cmd.options = Some(CommandOption::Format(format_str));
+                    cmd.option = Some(CommandOption::Format(format_str));
                     self.next_token();
                 } else {
                     // Parse as typing speed (words per minute)
                     if let Ok(speed) = speed_str.parse::<u16>() {
-                        cmd.options = Some(CommandOption::TypingSpeed(speed));
+                        cmd.option = Some(CommandOption::TypingSpeed(speed));
                     } else {
                         return Err(anyhow!("Invalid typing speed: {}", speed_str));
                     }
                 }
             }
             TokenType::FontSize => {
-                cmd.options = Some(CommandOption::Scale(
+                cmd.option = Some(CommandOption::Scale(
                     self.peek_token.literal.clone().parse()?,
                 ));
                 self.next_token();
             }
             TokenType::Padding => {
-                cmd.options = Some(CommandOption::Scale(
+                cmd.option = Some(CommandOption::Scale(
                     self.peek_token.literal.clone().parse()?,
                 ));
                 self.next_token();
             }
             TokenType::Height => {
-                cmd.options = Some(CommandOption::Scale(
+                cmd.option = Some(CommandOption::Scale(
                     self.peek_token.literal.clone().parse()?,
                 ));
                 self.next_token();
             }
             TokenType::CursorBlink => {
-                cmd.options = Some(CommandOption::Format(self.peek_token.literal.clone()));
+                cmd.option = Some(CommandOption::Format(self.peek_token.literal.clone()));
                 self.next_token();
                 if self.current_token.token_type != TokenType::Boolean {
                     return Err(anyhow!("expected boolean value."));
                 }
             }
             _ => {
-                cmd.options = Some(CommandOption::Format(self.peek_token.literal.clone()));
+                cmd.option = Some(CommandOption::Format(self.peek_token.literal.clone()));
                 self.next_token();
             }
         }
@@ -508,12 +508,12 @@ impl<'source> Parser<'source> {
 
         let mut cmd = Command {
             command_type: TokenType::Sleep,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
         if duration != Duration::default() {
-            cmd.options = Some(CommandOption::Rate(duration));
+            cmd.option = Some(CommandOption::Rate(duration));
         }
 
         Ok(cmd)
@@ -522,7 +522,7 @@ impl<'source> Parser<'source> {
     fn parse_hide(&mut self) -> Result<Command> {
         Ok(Command {
             command_type: TokenType::Hide,
-            options: None,
+            option: None,
             args: String::new(),
         })
     }
@@ -530,7 +530,7 @@ impl<'source> Parser<'source> {
     fn parse_require(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Require,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
@@ -546,7 +546,7 @@ impl<'source> Parser<'source> {
     fn parse_show(&mut self) -> Result<Command> {
         Ok(Command {
             command_type: TokenType::Show,
-            options: None,
+            option: None,
             args: String::new(),
         })
     }
@@ -554,13 +554,13 @@ impl<'source> Parser<'source> {
     fn parse_type(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Type,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.options = Some(CommandOption::Rate(speed));
+            cmd.option = Some(CommandOption::Rate(speed));
         }
 
         if self.peek_token.token_type != TokenType::String {
@@ -582,7 +582,7 @@ impl<'source> Parser<'source> {
     fn parse_copy(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Copy,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
@@ -605,7 +605,7 @@ impl<'source> Parser<'source> {
     fn parse_paste(&mut self) -> Result<Command> {
         Ok(Command {
             command_type: TokenType::Paste,
-            options: None,
+            option: None,
             args: String::new(),
         })
     }
@@ -613,7 +613,7 @@ impl<'source> Parser<'source> {
     fn parse_env(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Env,
-            options: Some(CommandOption::Format(self.peek_token.literal.clone())),
+            option: Some(CommandOption::Format(self.peek_token.literal.clone())),
             args: String::new(),
         };
 
@@ -631,7 +631,7 @@ impl<'source> Parser<'source> {
     fn parse_screenshot(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Screenshot,
-            options: None,
+            option: None,
             args: String::new(),
         };
 
