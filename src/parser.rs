@@ -29,7 +29,6 @@ impl std::error::Error for ParseError {}
 pub enum CommandOption {
     Rate(Duration),
     Scale(u32),
-    Immediate,
     Format(String),
     TypingSpeed(u16),
 }
@@ -39,7 +38,6 @@ impl fmt::Display for CommandOption {
         match self {
             CommandOption::Rate(duration) => write!(f, "{}ms", duration.as_millis()),
             CommandOption::Scale(scale) => write!(f, "{}scale", scale),
-            CommandOption::Immediate => write!(f, "immediate"),
             CommandOption::Format(format) => write!(f, "{}", format),
             CommandOption::TypingSpeed(speed) => write!(f, "{}wpm", speed),
         }
