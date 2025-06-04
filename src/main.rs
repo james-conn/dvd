@@ -3,6 +3,13 @@ use clap;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
+enum Outputs {
+    Movie,
+    Gif,
+    SVG,
+    CSV,
+}
+
 #[derive(Parser)]
 #[command(name = "vhs")]
 #[command(about = "Run a given tape file and generates its outputs.")]
