@@ -134,7 +134,7 @@ pub struct OutputCommand {
     pub format: String, // "gif", "mp4", "webm"
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct KeyCommand {
     pub key: TokenType,
     pub rate: Option<Duration>,
@@ -270,7 +270,7 @@ impl<'source> Parser<'source> {
         parser
     }
 
-    pub fn parse(&mut self) -> Vec<Command> {
+    pub fn parse(&mut self) -> Vec<Commands> {
         let mut commands = Vec::new();
 
         while self.current_token.token_type != TokenType::Eof {
@@ -300,7 +300,7 @@ impl<'source> Parser<'source> {
         &self.errors
     }
 
-    fn get_current_command(&mut self) -> Result<Command> {
+    fn get_current_command(&mut self) -> Result<Commands> {
         match self.current_token.token_type {
             TokenType::Space
             | TokenType::Backspace
@@ -389,13 +389,13 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_repeat(&mut self) -> Vec<CommandArg> {
+    fn parse_repeat(&mut self) -> u32 {
         if self.peek_token.token_type == TokenType::Number {
             let count: u32 = self.peek_token.literal.parse().unwrap_or(1);
             self.next_token();
-            vec![CommandArg::Repititions(count)]
+            count
         } else {
-            vec![CommandArg::Repititions(1)]
+            1
         }
     }
 
@@ -549,20 +549,18 @@ impl<'source> Parser<'source> {
         ))
     }
 
-    fn parse_keypress(&mut self, command_type: TokenType) -> Result<Command> {
-        let mut cmd = Command {
-            command_type,
-            option: None,
-            args: None,
-        };
+    fn parse_keypress(&mut self, command_type: TokenType) -> KeyCommand {
+        let mut cmd = KeyCommand::default();
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.option = Some(CommandOption::Rate(speed));
-        }
+            cmd.rate = Some(speed);
+        } // Otherwise this stays None
 
-        cmd.args = Some(self.parse_repeat());
-        Ok(cmd)
+        cmd.repeat_count = self.parse_repeat();
+
+        cmd.key = command_type; // Set the key
+        cmd
     }
 
     fn parse_output(&mut self) -> Result<Command> {
