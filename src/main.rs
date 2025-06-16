@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::env::current_dir;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::mpsc::{self, Sender, channel};
 use std::sync::{Condvar, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -30,6 +31,7 @@ enum Outputs {
 
 #[derive(Clone)]
 struct Listener {
+    mister: mpsc::Sender<()>,
     stuff: Arc<Mutex<GridStuff>>,
     term: std::sync::OnceLock<Arc<FairMutex<Term<Listener>>>>,
 }
@@ -39,7 +41,7 @@ impl EventListener for Listener {
         match event {
             Event::Wakeup => {
                 println!("AAAA");
-                let term = self.term.get().unwrap().lock();
+                self.mister.send(()).unwrap();
                 println!("BBB")
             }
             _ => (),
@@ -231,7 +233,9 @@ fn write_line<const W: usize, const H: usize>(
 //}
 
 fn main() {
+    let (sender, receiver) = channel();
     let listener = Listener {
+        mister: sender,
         stuff: Arc::new(Mutex::new(GridStuff::default())),
         term: std::sync::OnceLock::new(),
     };
@@ -275,27 +279,42 @@ fn main() {
 
     loopp.spawn();
 
-    println!("CCC");
-    sleep(Duration::from_millis(500));
-    let term_term = term.lock();
-    println!("DDD");
-
     let mut grid = Grid::<WIDTH, HEIGHT>::default();
-
-    for cell in term_term.grid().display_iter() {
-        grid.set(
-            cell.point.column.0,
-            cell.point.line.0 as usize,
-            GridCell::new(cell.cell.c),
-        );
-    }
 
     let mut seq = GridSequence::new(Pt(40.0));
     seq.framerate = core::num::NonZeroU8::new(10).unwrap();
 
+    let mut count = 0;
+    while let Ok(()) = receiver.recv() {
+        print!("hiii");
+
+        let term_term = term.lock();
+
+        print!("hiiJFKLD:Fi");
+
+        for cell in term_term.grid().display_iter() {
+            grid.set(
+                cell.point.column.0,
+                cell.point.line.0 as usize,
+                GridCell::new(cell.cell.c),
+            );
+            count += 1;
+            println!("{count}");
+        }
+
+        print!("MMMMMMMI");
+        drop(term_term);
+        print!("MMMMMMMI");
+
+        seq.append(Frame::variable(
+            grid.clone(),
+            core::num::NonZeroU8::new(10).unwrap(),
+        ));
+    }
+
     seq.append(Frame::variable(
         grid,
-        core::num::NonZeroU8::new(10).unwrap(),
+        core::num::NonZeroU8::new(50).unwrap(),
     ));
 
     // type_line(
