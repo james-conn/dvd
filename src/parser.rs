@@ -606,12 +606,45 @@ impl<'source> Parser<'source> {
         })
     }
 
+    fn parse_shift(&mut self) -> Result<CtrlCommand> {
+        // optional @<time> prefix
+        let dur = self.parse_speed();
+        let rate = if dur != Duration::default() {
+            Some(dur)
+        } else {
+            None
+        };
+
+        // must be "+<key>"
+        if self.peek_token.token_type != TokenType::Plus {
+            return Err(anyhow!(
+                "Expected '+' after Shift, got {}",
+                self.peek_token.literal
+            ));
+        }
+        self.next_token(); // consume '+'
+
+        // validate the one key
+        let peek = &self.peek_token;
+        let ok = matches!(
+            peek.token_type,
+            TokenType::String
+                | TokenType::Enter
+                | TokenType::LeftBracket
+                | TokenType::RightBracket
+                | TokenType::Tab
+        );
+        if !ok {
+            return Err(anyhow!("Invalid Shift key: {}", peek.literal));
         }
 
-        Err(anyhow!(
-            "Expected shift character, got {}",
-            self.current_token.literal
-        ))
+        let key = peek.literal.clone();
+        self.next_token(); // consume the key
+
+        Ok(CtrlCommand {
+            keys: vec![key],
+            rate,
+        })
     }
 
     fn parse_keypress(&mut self, command_type: TokenType) -> KeyCommand {
