@@ -141,11 +141,16 @@ pub struct CtrlCommand {
     pub rate: Option<Duration>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct SetCommand {
     pub setting: Setting,
 }
 
+impl Default for Setting {
+    fn default() -> Self {
+        Setting::CursorBlink(false)
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum Setting {
     Shell(String),
@@ -391,13 +396,13 @@ impl<'source> Parser<'source> {
             | TokenType::PageDown => Ok(self
                 .parse_keypress(self.current_token.token_type.clone())
                 .into()),
-            TokenType::Set => Ok(self.parse_set()?),
+            TokenType::Set => Ok(self.parse_set()?.into()),
             TokenType::Output => Ok(self.parse_output()?.into()),
             TokenType::Sleep => Ok(self.parse_sleep()?),
             TokenType::Type => Ok(self.parse_type()?),
             TokenType::Ctrl => Ok(self.parse_ctrl()?.into()),
             TokenType::Alt => Ok(self.parse_alt()?.into()),
-            TokenType::Shift => Ok(self.parse_shift()?),
+            TokenType::Shift => Ok(self.parse_shift()?.into()),
             TokenType::Hide => Ok(self.parse_hide()?),
             TokenType::Require => Ok(self.parse_require()?),
             TokenType::Show => Ok(self.parse_show()?),
@@ -685,100 +690,218 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_set(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Set,
-            option: None,
-            args: None,
-        };
-
-        if is_setting(&self.peek_token.token_type) {
-            cmd.args = Some(vec![CommandArg::Text(self.peek_token.literal.clone())]);
-        } else {
+    fn parse_set(&mut self) -> Result<SetCommand> {
+        // Make sure the next token really is a setting name
+        if !is_setting(&self.peek_token.token_type) {
             return Err(anyhow!("Unknown setting: {}", self.peek_token.literal));
         }
-        self.next_token();
 
-        match self.current_token.token_type {
-            TokenType::WaitTimeout => {
-                let duration = self.parse_speed();
-                if duration != Duration::default() {
-                    cmd.option = Some(CommandOption::Rate(duration));
-                }
-            }
-            TokenType::WaitPattern => {
-                cmd.option = Some(CommandOption::Format(self.peek_token.literal.clone()));
-                if let Err(_) = Regex::new(&self.peek_token.literal) {
+        // Remember which setting, then consume it
+        let setting_type = self.peek_token.token_type.clone();
+        self.next_token(); // now current_token is the setting name, peek_token is its value
+
+        // Parse the value according to which setting it is
+        let setting = match setting_type {
+            TokenType::Shell => {
+                // can be a JSON literal or a bare string
+                if !matches!(
+                    self.peek_token.token_type,
+                    TokenType::String | TokenType::Json
+                ) {
                     return Err(anyhow!(
-                        "Invalid regexp pattern: {}",
+                        "Set Shell expects string or JSON, got {}",
                         self.peek_token.literal
                     ));
                 }
+                let val = self.peek_token.literal.clone();
                 self.next_token();
+                Setting::Shell(val)
             }
-            TokenType::LoopOffset => {
-                let mut offset = self.peek_token.literal.clone();
-                self.next_token();
-                offset.push('%');
-                if self.peek_token.token_type == TokenType::Percent {
-                    self.next_token();
-                }
-                cmd.option = Some(CommandOption::Format(offset));
-            }
-            TokenType::TypingSpeed => {
-                let speed_str = self.peek_token.literal.clone();
-                self.next_token();
 
-                // Handle time units
-                if matches!(
+            TokenType::FontSize => {
+                let size: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::FontSize(size)
+            }
+
+            TokenType::FontFamily => {
+                let fam = self.peek_token.literal.clone();
+                self.next_token();
+                Setting::FontFamily(fam)
+            }
+
+            TokenType::Width => {
+                let w: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::Width(w)
+            }
+
+            TokenType::Height => {
+                let h: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::Height(h)
+            }
+
+            TokenType::LetterSpacing => {
+                let ls: f32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::LetterSpacing(ls)
+            }
+
+            TokenType::LineHeight => {
+                let lh: f32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::LineHeight(lh)
+            }
+
+            TokenType::LoopOffset => {
+                // might be "25" + "%" token, or "25%"
+                let mut lit = self.peek_token.literal.clone();
+                self.next_token();
+                if self.peek_token.token_type == TokenType::Percent {
+                    self.next_token(); // consume '%'
+                }
+                if lit.ends_with('%') {
+                    lit.pop();
+                }
+                let v: f32 = lit.parse()?;
+                Setting::LoopOffset(v)
+            }
+
+            TokenType::Theme => {
+                let theme = self.peek_token.literal.clone();
+                self.next_token();
+                Setting::Theme(theme)
+            }
+
+            TokenType::Padding => {
+                let p: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::Padding(p)
+            }
+
+            TokenType::Framerate => {
+                let fr: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::Framerate(fr)
+            }
+
+            TokenType::PlaybackSpeed => {
+                let ps: f32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::PlaybackSpeed(ps)
+            }
+
+            TokenType::MarginFill => {
+                let mf = self.peek_token.literal.clone();
+                self.next_token();
+                Setting::MarginFill(mf)
+            }
+
+            TokenType::Margin => {
+                let m: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::Margin(m)
+            }
+
+            TokenType::BorderRadius => {
+                let br: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::BorderRadius(br)
+            }
+
+            TokenType::WindowBar => {
+                let wb = self.peek_token.literal.clone();
+                self.next_token();
+                Setting::WindowBar(wb)
+            }
+
+            TokenType::WindowBarSize => {
+                let wbs: u32 = self.peek_token.literal.parse()?;
+                self.next_token();
+                Setting::WindowBarSize(wbs)
+            }
+
+            TokenType::TypingSpeed => {
+                // expect a number then optional ms|s
+                if self.peek_token.token_type != TokenType::Number {
+                    return Err(anyhow!(
+                        "Set TypingSpeed expects a number, got {}",
+                        self.peek_token.literal
+                    ));
+                }
+                let val: f64 = self.peek_token.literal.parse()?;
+                self.next_token();
+                let dur = if matches!(
                     self.peek_token.token_type,
                     TokenType::Milliseconds | TokenType::Seconds
                 ) {
-                    let format_str = format!("{}{}", speed_str, self.peek_token.literal);
-                    cmd.option = Some(CommandOption::Format(format_str));
+                    let unit = self.peek_token.token_type.clone();
                     self.next_token();
-                } else {
-                    // Parse as typing speed (words per minute)
-                    if let Ok(speed) = speed_str.parse::<u16>() {
-                        cmd.option = Some(CommandOption::TypingSpeed(speed));
-                    } else {
-                        return Err(anyhow!("Invalid typing speed: {}", speed_str));
+                    match unit {
+                        TokenType::Milliseconds => Duration::from_millis(val as u64),
+                        TokenType::Seconds => Duration::from_secs(val as u64),
+                        _ => unreachable!(),
                     }
-                }
+                } else {
+                    Duration::from_secs(val as u64)
+                };
+                Setting::TypingSpeed(dur)
             }
-            TokenType::FontSize => {
-                cmd.option = Some(CommandOption::Scale(
-                    self.peek_token.literal.clone().parse()?,
-                ));
-                self.next_token();
-            }
-            TokenType::Padding => {
-                cmd.option = Some(CommandOption::Scale(
-                    self.peek_token.literal.clone().parse()?,
-                ));
-                self.next_token();
-            }
-            TokenType::Height => {
-                cmd.option = Some(CommandOption::Scale(
-                    self.peek_token.literal.clone().parse()?,
-                ));
-                cmd.args = Some(vec![CommandArg::Height]);
-                self.next_token();
-            }
-            TokenType::CursorBlink => {
-                cmd.option = Some(CommandOption::Format(self.peek_token.literal.clone()));
-                self.next_token();
-                if self.current_token.token_type != TokenType::Boolean {
-                    return Err(anyhow!("expected boolean value."));
-                }
-            }
-            _ => {
-                cmd.option = Some(CommandOption::Format(self.peek_token.literal.clone()));
-                self.next_token();
-            }
-        }
 
-        Ok(cmd)
+            TokenType::WaitTimeout => {
+                // number then ms|s|m
+                if self.peek_token.token_type != TokenType::Number {
+                    return Err(anyhow!(
+                        "Set WaitTimeout expects a number, got {}",
+                        self.peek_token.literal
+                    ));
+                }
+                let val: f64 = self.peek_token.literal.parse()?;
+                self.next_token();
+                let dur = if matches!(
+                    self.peek_token.token_type,
+                    TokenType::Milliseconds | TokenType::Seconds | TokenType::Minutes
+                ) {
+                    let unit = self.peek_token.token_type.clone();
+                    self.next_token();
+                    match unit {
+                        TokenType::Milliseconds => Duration::from_millis(val as u64),
+                        TokenType::Seconds => Duration::from_secs(val as u64),
+                        TokenType::Minutes => Duration::from_secs((val * 60.0) as u64),
+                        _ => unreachable!(),
+                    }
+                } else {
+                    Duration::from_secs(val as u64)
+                };
+                Setting::WaitTimeout(dur)
+            }
+
+            TokenType::WaitPattern => {
+                let pat = self.peek_token.literal.clone();
+                if Regex::new(&pat).is_err() {
+                    return Err(anyhow!("Invalid regexp pattern: {}", pat));
+                }
+                self.next_token();
+                Setting::WaitPattern(pat)
+            }
+
+            TokenType::CursorBlink => {
+                let lit = self.peek_token.literal.clone();
+                let b = match lit.as_str() {
+                    "true" => true,
+                    "false" => false,
+                    _ => return Err(anyhow!("Set CursorBlink expects true/false, got {}", lit)),
+                };
+                self.next_token();
+                Setting::CursorBlink(b)
+            }
+
+            // We’ve already guarded with is_setting, so nothing else can happen:
+            _ => unreachable!(),
+        };
+
+        Ok(SetCommand { setting })
     }
 
     fn parse_sleep(&mut self) -> Result<Command> {
