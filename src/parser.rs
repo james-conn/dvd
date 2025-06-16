@@ -118,18 +118,15 @@ pub struct Command {
 }
 
 pub struct TypeCommand {
-    pub action: TokenType, // Always type
     pub rate: Option<Duration>,
-    pub output: String, // The string to input into the terminal session
+    pub text: String, // The string to input into the terminal session
 }
 
 pub struct SleepCommand {
-    pub action: TokenType, // Always sleep
     pub time: Option<Duration>,
 }
 
 pub struct OutputCommand {
-    pub action: TokenType, // Always output
     pub path: Option<PathBuf>,
 }
 
@@ -140,17 +137,14 @@ pub struct KeyCommand {
 }
 
 pub struct DisplayCommand {
-    pub action: TokenType, // Always Display
-    pub visibility: bool,  // Hide (false) or Show (true)
+    pub visibility: bool, // Hide (false) or Show (true)
 }
 
 pub struct RequireCommand {
-    pub command_type: TokenType,
     pub program: CommandArg, // The program to check that is on the PATH.
 }
 
 pub struct SetCommand {
-    pub command_type: TokenType,
     pub option: Option<CommandOption>,
     pub args: Option<CommandArg>, // Ever a vector when series of keys
 }
