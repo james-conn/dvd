@@ -188,6 +188,25 @@ pub enum WaitMode {
     Screen,
 }
 
+impl FromStr for WaitMode {
+    type Err = Error;
+
+    fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
+        // Normalize the string
+        match input {
+            "line" => Ok(WaitMode::Line),
+            "screen" => Ok(WaitMode::Screen),
+            _ => Err(anyhow!("Wait mode not recognized")),
+        }
+    }
+}
+
+impl Default for WaitMode {
+    fn default() -> Self {
+        WaitMode::Line
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScreenshotCommand {
     pub path: PathBuf,
