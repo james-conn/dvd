@@ -117,42 +117,118 @@ pub struct Command {
     pub args: Option<Vec<CommandArg>>, // Ever a vector when series of keys
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct TypeCommand {
     pub rate: Option<Duration>,
-    pub text: String, // The string to input into the terminal session
+    pub text: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct SleepCommand {
-    pub time: Option<Duration>,
+    pub duration: Duration,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct OutputCommand {
-    pub path: Option<PathBuf>,
+    pub path: PathBuf,
+    pub format: String, // "gif", "mp4", "webm"
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct KeyCommand {
-    pub key: TokenType, // TODO: Define invariants (we just want the keys subsection)
+    pub key: TokenType,
     pub rate: Option<Duration>,
-    pub modifier: Option<Vec<CommandArg>>, // Ever a vector when series of keys
+    pub repeat_count: u32,
 }
 
-pub struct DisplayCommand {
-    pub visibility: bool, // Hide (false) or Show (true)
+#[derive(Debug, Clone, PartialEq)]
+pub struct CtrlCommand {
+    pub keys: Vec<String>, // e.g., ["c"] for Ctrl+C, ["alt", "tab"] for Ctrl+Alt+Tab
+    pub rate: Option<Duration>,
 }
 
-pub struct RequireCommand {
-    pub program: CommandArg, // The program to check that is on the PATH.
-}
-
+#[derive(Debug, Clone, PartialEq)]
 pub struct SetCommand {
-    pub option: Option<CommandOption>,
-    pub args: Option<CommandArg>, // Ever a vector when series of keys
+    pub setting: Setting,
 }
 
-enum Commands {
+#[derive(Debug, Clone, PartialEq)]
+pub enum Setting {
+    Shell(String),
+    FontSize(u32),
+    FontFamily(String),
+    Width(u32),
+    Height(u32),
+    LetterSpacing(f32),
+    LineHeight(f32),
+    LoopOffset(f32),
+    Theme(String),
+    Padding(u32),
+    Framerate(u32),
+    PlaybackSpeed(f32),
+    MarginFill(String),
+    Margin(u32),
+    BorderRadius(u32),
+    WindowBar(String),
+    WindowBarSize(u32),
+    TypingSpeed(Duration),
+    WaitTimeout(Duration),
+    WaitPattern(String),
+    CursorBlink(bool),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RequireCommand {
+    pub program: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WaitCommand {
+    pub mode: WaitMode,
+    pub pattern: Option<String>, // regex pattern
+    pub timeout: Option<Duration>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum WaitMode {
+    Line,
+    Screen,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScreenshotCommand {
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CopyCommand {
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EnvCommand {
+    pub variable: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Commands {
+    Type(TypeCommand),
+    Sleep(SleepCommand),
+    Output(OutputCommand),
     Key(KeyCommand),
-    Require(RequireCommand),
+    Ctrl(CtrlCommand),
+    Alt(CtrlCommand),
+    Shift(CtrlCommand),
     Set(SetCommand),
+    Require(RequireCommand),
+    Wait(WaitCommand),
+    Screenshot(ScreenshotCommand),
+    Copy(CopyCommand),
+    Paste, // No additional data needed
+    Env(EnvCommand),
+    Hide, // No additional data needed
+    Show, // No additional data needed
 }
 
 impl fmt::Display for Command {
