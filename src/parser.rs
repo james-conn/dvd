@@ -395,8 +395,8 @@ impl<'source> Parser<'source> {
             TokenType::Output => Ok(self.parse_output()?.into()),
             TokenType::Sleep => Ok(self.parse_sleep()?),
             TokenType::Type => Ok(self.parse_type()?),
-            TokenType::Ctrl => Ok(self.parse_ctrl()?),
-            TokenType::Alt => Ok(self.parse_alt()?),
+            TokenType::Ctrl => Ok(self.parse_ctrl()?.into()),
+            TokenType::Alt => Ok(self.parse_alt()?.into()),
             TokenType::Shift => Ok(self.parse_shift()?),
             TokenType::Hide => Ok(self.parse_hide()?),
             TokenType::Require => Ok(self.parse_require()?),
@@ -566,51 +566,46 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_alt(&mut self) -> Result<CtrlCommand> {
-        if self.peek_token.token_type == TokenType::Plus {
-            self.next_token();
-            if matches!(
-                self.peek_token.token_type,
-                TokenType::String
-                    | TokenType::Enter
-                    | TokenType::LeftBracket
-                    | TokenType::RightBracket
-                    | TokenType::Tab
-            ) {
-                let c = self.peek_token.literal.clone();
-                self.next_token();
-                return Ok(Command {
-                    command_type: TokenType::Alt,
-                    option: None,
-                    args: Some(vec![CommandArg::KeyCombination(c)]),
-                });
-            }
+        // optional @<time> prefix
+        let dur = self.parse_speed();
+        let rate = if dur != Duration::default() {
+            Some(dur)
+        } else {
+            None
+        };
+
+        // must be "+<key>"
+        if self.peek_token.token_type != TokenType::Plus {
+            return Err(anyhow!(
+                "Expected '+' after Alt, got {}",
+                self.peek_token.literal
+            ));
+        }
+        self.next_token(); // consume '+'
+
+        // validate the one key
+        let peek = &self.peek_token;
+        let ok = matches!(
+            peek.token_type,
+            TokenType::String
+                | TokenType::Enter
+                | TokenType::LeftBracket
+                | TokenType::RightBracket
+                | TokenType::Tab
+        );
+        if !ok {
+            return Err(anyhow!("Invalid Alt key: {}", peek.literal));
         }
 
-        Err(anyhow!(
-            "Expected alt character, got {}",
-            self.current_token.literal
-        ))
+        let key = peek.literal.clone();
+        self.next_token(); // consume the key
+
+        Ok(CtrlCommand {
+            keys: vec![key],
+            rate,
+        })
     }
 
-    fn parse_shift(&mut self) -> Result<Command> {
-        if self.peek_token.token_type == TokenType::Plus {
-            self.next_token();
-            if matches!(
-                self.peek_token.token_type,
-                TokenType::String
-                    | TokenType::Enter
-                    | TokenType::LeftBracket
-                    | TokenType::RightBracket
-                    | TokenType::Tab
-            ) {
-                let c = self.peek_token.literal.clone();
-                self.next_token();
-                return Ok(Command {
-                    command_type: TokenType::Shift,
-                    option: None,
-                    args: Some(vec![CommandArg::KeyCombination(c)]),
-                });
-            }
         }
 
         Err(anyhow!(
