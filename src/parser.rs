@@ -401,7 +401,7 @@ impl<'source> Parser<'source> {
             TokenType::Hide => Ok(self.parse_hide()?),
             TokenType::Require => Ok(self.parse_require()?),
             TokenType::Show => Ok(self.parse_show()?),
-            TokenType::Wait => Ok(self.parse_wait()?),
+            TokenType::Wait => Ok(self.parse_wait()?.into()),
             TokenType::Screenshot => Ok(self.parse_screenshot()?),
             TokenType::Copy => Ok(self.parse_copy()?),
             TokenType::Paste => Ok(self.parse_paste()?),
@@ -503,68 +503,69 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_ctrl(&mut self) -> Result<Command> {
-        let mut args = Vec::new();
+    fn parse_ctrl(&mut self) -> Result<CtrlCommand> {
+        // optional @<time>
+        let dur = self.parse_speed();
+        let rate = if dur != Duration::default() {
+            Some(dur)
+        } else {
+            None
+        };
+
+        let mut keys = Vec::new();
         let mut in_modifier_chain = true;
 
+        // expect a series of "+X" tokens
         while self.peek_token.token_type == TokenType::Plus {
-            self.next_token();
-            let peek = self.peek_token.clone();
+            self.next_token(); // consume the '+'
+            let peek = &self.peek_token;
 
-            if let Some(keyword_type) = KEYWORDS.get(&*peek.literal) {
-                if is_modifier(keyword_type) {
+            // is this a named modifier? (Alt or Shift)
+            if let Some(kw) = KEYWORDS.get(&*peek.literal) {
+                if is_modifier(kw) {
                     if !in_modifier_chain {
-                        return Err(anyhow!("Modifiers must come before other characters"));
+                        return Err(anyhow!("Modifiers must come before other keys"));
                     }
-                    args.push(CommandArg::KeyCombination(peek.literal));
+                    keys.push(peek.literal.clone());
                     self.next_token();
                     continue;
                 }
             }
 
+            // once we hit a non-modifier, no more modifiers allowed
             in_modifier_chain = false;
 
+            // must be a single‐char string or one of the special keys
+            let lit = peek.literal.clone();
             match peek.token_type {
                 TokenType::Enter
                 | TokenType::Space
                 | TokenType::Backspace
+                | TokenType::Delete
+                | TokenType::Insert
+                | TokenType::Tab
+                | TokenType::Escape
                 | TokenType::Minus
                 | TokenType::At
                 | TokenType::LeftBracket
                 | TokenType::RightBracket
                 | TokenType::Caret
-                | TokenType::Backslash => {
-                    args.push(CommandArg::KeyCombination(peek.literal));
-                }
-                TokenType::String if peek.literal.len() == 1 => {
-                    args.push(CommandArg::KeyCombination(peek.literal));
-                }
-                _ => {
-                    return Err(anyhow!(
-                        "Invalid control argument: {}",
-                        self.current_token.literal
-                    ));
-                }
+                | TokenType::Backslash => keys.push(lit),
+                TokenType::String if lit.len() == 1 => keys.push(lit),
+                _ => return Err(anyhow!("Invalid Ctrl key: {}", lit)),
             }
 
-            self.next_token();
+            self.next_token(); // consume the actual key
         }
 
-        if args.is_empty() {
-            return Err(anyhow!(
-                "Expected control character with args, got {}",
-                self.current_token.literal
-            ));
+        if keys.is_empty() {
+            return Err(anyhow!("Expected at least one key after Ctrl"));
         }
 
-        Ok(Command {
-            command_type: TokenType::Ctrl,
-            option: None,
-            args: Some(args),
-        })
+        Ok(CtrlCommand { keys, rate })
     }
 
-    fn parse_alt(&mut self) -> Result<Command> {
+    fn parse_alt(&mut self) -> Result<CtrlCommand> {
         if self.peek_token.token_type == TokenType::Plus {
             self.next_token();
             if matches!(
