@@ -117,9 +117,9 @@ pub struct TypeCommand {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SleepCommand {
-    pub duration: Duration,
+    pub duration: Option<Duration>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -398,7 +398,7 @@ impl<'source> Parser<'source> {
                 .into()),
             TokenType::Set => Ok(self.parse_set()?.into()),
             TokenType::Output => Ok(self.parse_output()?.into()),
-            TokenType::Sleep => Ok(self.parse_sleep()?),
+            TokenType::Sleep => Ok(self.parse_sleep()?.into()),
             TokenType::Type => Ok(self.parse_type()?),
             TokenType::Ctrl => Ok(self.parse_ctrl()?.into()),
             TokenType::Alt => Ok(self.parse_alt()?.into()),
@@ -904,21 +904,20 @@ impl<'source> Parser<'source> {
         Ok(SetCommand { setting })
     }
 
-    fn parse_sleep(&mut self) -> Result<Command> {
+    fn parse_sleep(&mut self) -> Result<SleepCommand> {
         let duration = if self.peek_token.token_type == TokenType::Number {
             self.parse_time()
         } else {
             Duration::default()
         };
 
-        let mut cmd = Command {
-            command_type: TokenType::Sleep,
-            option: None,
-            args: None,
-        };
+        let mut cmd = SleepCommand::default();
 
         if duration != Duration::default() {
-            cmd.option = Some(CommandOption::Rate(duration));
+            cmd.duration = Some(duration);
+        } else {
+            // If no duration is specified, it's None
+            cmd.duration = None;
         }
 
         Ok(cmd)
