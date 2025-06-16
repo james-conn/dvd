@@ -111,7 +111,7 @@ impl fmt::Display for CommandOption {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct TypeCommand {
     pub rate: Option<Duration>,
     pub text: String,
@@ -399,7 +399,7 @@ impl<'source> Parser<'source> {
             TokenType::Set => Ok(self.parse_set()?.into()),
             TokenType::Output => Ok(self.parse_output()?.into()),
             TokenType::Sleep => Ok(self.parse_sleep()?.into()),
-            TokenType::Type => Ok(self.parse_type()?),
+            TokenType::Type => Ok(self.parse_type()?.into()),
             TokenType::Ctrl => Ok(self.parse_ctrl()?.into()),
             TokenType::Alt => Ok(self.parse_alt()?.into()),
             TokenType::Shift => Ok(self.parse_shift()?.into()),
@@ -935,29 +935,23 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_type(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Type,
-            option: None,
-            args: None,
-        };
+    fn parse_type(&mut self) -> Result<TypeCommand> {
+        let mut cmd = TypeCommand::default();
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.option = Some(CommandOption::Rate(speed));
+            cmd.rate = Some(speed);
         }
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
-        let mut args = Vec::new();
         while self.peek_token.token_type == TokenType::String {
             self.next_token();
-            args.push(CommandArg::Text(self.current_token.literal.clone()));
+            cmd.text = self.current_token.literal.clone();
         }
 
-        cmd.args = Some(args);
         Ok(cmd)
     }
 
