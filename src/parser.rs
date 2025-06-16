@@ -403,7 +403,7 @@ impl<'source> Parser<'source> {
             TokenType::Ctrl => Ok(self.parse_ctrl()?.into()),
             TokenType::Alt => Ok(self.parse_alt()?.into()),
             TokenType::Shift => Ok(self.parse_shift()?.into()),
-            TokenType::Hide => Ok(self.parse_hide()?),
+            TokenType::Hide => Ok(Commands::Hide),
             TokenType::Require => Ok(self.parse_require()?.into()),
             TokenType::Show => Ok(self.parse_show()?),
             TokenType::Wait => Ok(self.parse_wait()?.into()),
@@ -921,14 +921,6 @@ impl<'source> Parser<'source> {
         }
 
         Ok(cmd)
-    }
-
-    fn parse_hide(&mut self) -> Result<Command> {
-        Ok(Command {
-            command_type: TokenType::Hide,
-            option: None,
-            args: None,
-        })
     }
 
     fn parse_require(&mut self) -> Result<RequireCommand> {
