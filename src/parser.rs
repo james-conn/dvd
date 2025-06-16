@@ -4,7 +4,7 @@ use crate::token::{KEYWORDS, Token, TokenType, is_modifier, is_setting};
 use anyhow::{Result, anyhow};
 use regex::Regex;
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
@@ -114,7 +114,51 @@ impl fmt::Display for CommandOption {
 pub struct Command {
     pub command_type: TokenType,
     pub option: Option<CommandOption>,
-    pub args: Option<Vec<CommandArg>>,
+    pub args: Option<Vec<CommandArg>>, // Ever a vector when series of keys
+}
+
+pub struct TypeCommand {
+    pub action: TokenType, // Always type
+    pub rate: Option<Duration>,
+    pub output: String, // The string to input into the terminal session
+}
+
+pub struct SleepCommand {
+    pub action: TokenType, // Always sleep
+    pub time: Option<Duration>,
+}
+
+pub struct OutputCommand {
+    pub action: TokenType, // Always output
+    pub path: Option<PathBuf>,
+}
+
+pub struct KeyCommand {
+    pub key: TokenType, // TODO: Define invariants (we just want the keys subsection)
+    pub rate: Option<Duration>,
+    pub modifier: Option<Vec<CommandArg>>, // Ever a vector when series of keys
+}
+
+pub struct DisplayCommand {
+    pub action: TokenType, // Always Display
+    pub visibility: bool,  // Hide (false) or Show (true)
+}
+
+pub struct RequireCommand {
+    pub command_type: TokenType,
+    pub program: CommandArg, // The program to check that is on the PATH.
+}
+
+pub struct SetCommand {
+    pub command_type: TokenType,
+    pub option: Option<CommandOption>,
+    pub args: Option<CommandArg>, // Ever a vector when series of keys
+}
+
+enum Commands {
+    Key(KeyCommand),
+    Require(RequireCommand),
+    Set(SetCommand),
 }
 
 impl fmt::Display for Command {
