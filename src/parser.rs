@@ -175,10 +175,10 @@ pub struct RequireCommand {
     pub program: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone)]
 pub struct WaitCommand {
     pub mode: WaitMode,
-    pub pattern: Option<String>, // regex pattern
+    pub pattern: Option<Regex>, // regex pattern
     pub timeout: Option<Duration>,
 }
 
@@ -223,7 +223,7 @@ pub struct EnvCommand {
     pub value: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Commands {
     Type(TypeCommand),
     Sleep(SleepCommand),
