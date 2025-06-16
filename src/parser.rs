@@ -176,7 +176,7 @@ pub enum Setting {
     CursorBlink(bool),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct RequireCommand {
     pub program: String,
 }
@@ -404,7 +404,7 @@ impl<'source> Parser<'source> {
             TokenType::Alt => Ok(self.parse_alt()?.into()),
             TokenType::Shift => Ok(self.parse_shift()?.into()),
             TokenType::Hide => Ok(self.parse_hide()?),
-            TokenType::Require => Ok(self.parse_require()?),
+            TokenType::Require => Ok(self.parse_require()?.into()),
             TokenType::Show => Ok(self.parse_show()?),
             TokenType::Wait => Ok(self.parse_wait()?.into()),
             TokenType::Screenshot => Ok(self.parse_screenshot()?),
@@ -931,18 +931,14 @@ impl<'source> Parser<'source> {
         })
     }
 
-    fn parse_require(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Require,
-            option: None,
-            args: None,
-        };
+    fn parse_require(&mut self) -> Result<RequireCommand> {
+        let mut cmd = RequireCommand::default();
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("{} expects one string", self.current_token.literal));
         }
 
-        cmd.args = Some(vec![CommandArg::FilePath(self.peek_token.literal.clone())]);
+        cmd.program = self.peek_token.literal.clone();
         self.next_token();
         Ok(cmd)
     }
