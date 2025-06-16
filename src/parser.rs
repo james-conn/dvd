@@ -218,7 +218,7 @@ impl Default for WaitMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ScreenshotCommand {
     pub path: PathBuf,
 }
@@ -405,11 +405,11 @@ impl<'source> Parser<'source> {
             TokenType::Shift => Ok(self.parse_shift()?.into()),
             TokenType::Hide => Ok(Commands::Hide),
             TokenType::Require => Ok(self.parse_require()?.into()),
-            TokenType::Show => Ok(self.parse_show()?),
+            TokenType::Show => Ok(Commands::Show),
             TokenType::Wait => Ok(self.parse_wait()?.into()),
-            TokenType::Screenshot => Ok(self.parse_screenshot()?),
+            TokenType::Screenshot => Ok(self.parse_screenshot()?.into()),
             TokenType::Copy => Ok(self.parse_copy()?),
-            TokenType::Paste => Ok(self.parse_paste()?),
+            TokenType::Paste => Ok(Commands::Paste),
             TokenType::Env => Ok(self.parse_env()?),
             _ => Err(anyhow!("Invalid command: {}", self.current_token.literal)),
         }
@@ -935,14 +935,6 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_show(&mut self) -> Result<Command> {
-        Ok(Command {
-            command_type: TokenType::Show,
-            option: None,
-            args: None,
-        })
-    }
-
     fn parse_type(&mut self) -> Result<Command> {
         let mut cmd = Command {
             command_type: TokenType::Type,
@@ -1018,12 +1010,8 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_screenshot(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Screenshot,
-            option: None,
-            args: None,
-        };
+    fn parse_screenshot(&mut self) -> Result<ScreenshotCommand> {
+        let mut cmd = ScreenshotCommand::default();
 
         if self.peek_token.token_type != TokenType::String {
             self.next_token();
@@ -1036,7 +1024,7 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("Expected file with .png extension"));
         }
 
-        cmd.args = Some(vec![CommandArg::FilePath(self.peek_token.literal.clone())]);
+        cmd.path = PathBuf::from(self.peek_token.literal.clone());
         self.next_token();
         Ok(cmd)
     }
