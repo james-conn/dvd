@@ -228,7 +228,7 @@ pub struct CopyCommand {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct EnvCommand {
     pub variable: String,
     pub value: String,
@@ -410,7 +410,7 @@ impl<'source> Parser<'source> {
             TokenType::Screenshot => Ok(self.parse_screenshot()?.into()),
             TokenType::Copy => Ok(self.parse_copy()?.into()),
             TokenType::Paste => Ok(Commands::Paste),
-            TokenType::Env => Ok(self.parse_env()?),
+            TokenType::Env => Ok(self.parse_env()?.into()),
             _ => Err(anyhow!("Invalid command: {}", self.current_token.literal)),
         }
     }
@@ -973,13 +973,6 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_paste(&mut self) -> Result<Command> {
-        Ok(Command {
-            command_type: TokenType::Paste,
-            option: None,
-            args: None,
-        })
-    }
 
     fn parse_env(&mut self) -> Result<Command> {
         let mut cmd = Command {
@@ -994,10 +987,10 @@ impl<'source> Parser<'source> {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
-        cmd.args = Some(vec![CommandArg::EnvVarName(
-            self.peek_token.literal.clone(),
-        )]);
+        // Then the value the user wants assigned to it.
+        cmd.value = self.peek_token.literal.clone();
         self.next_token();
+
         Ok(cmd)
     }
 
