@@ -973,13 +973,11 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
+    fn parse_env(&mut self) -> Result<EnvCommand> {
+        let mut cmd = EnvCommand::default();
 
-    fn parse_env(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Env,
-            option: Some(CommandOption::Format(self.peek_token.literal.clone())),
-            args: None,
-        };
+        // The first argument will of course be the variable
+        cmd.variable = self.peek_token.literal.clone();
 
         self.next_token();
 
