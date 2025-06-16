@@ -223,7 +223,7 @@ pub struct ScreenshotCommand {
     pub path: PathBuf,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct CopyCommand {
     pub text: String,
 }
@@ -408,7 +408,7 @@ impl<'source> Parser<'source> {
             TokenType::Show => Ok(Commands::Show),
             TokenType::Wait => Ok(self.parse_wait()?.into()),
             TokenType::Screenshot => Ok(self.parse_screenshot()?.into()),
-            TokenType::Copy => Ok(self.parse_copy()?),
+            TokenType::Copy => Ok(self.parse_copy()?.into()),
             TokenType::Paste => Ok(Commands::Paste),
             TokenType::Env => Ok(self.parse_env()?),
             _ => Err(anyhow!("Invalid command: {}", self.current_token.literal)),
@@ -948,6 +948,7 @@ impl<'source> Parser<'source> {
         }
 
         while self.peek_token.token_type == TokenType::String {
+            // The next token should be the text the user wants to type
             self.next_token();
             cmd.text = self.current_token.literal.clone();
         }
@@ -955,24 +956,20 @@ impl<'source> Parser<'source> {
         Ok(cmd)
     }
 
-    fn parse_copy(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Copy,
-            option: None,
-            args: None,
-        };
+    fn parse_copy(&mut self) -> Result<CopyCommand> {
+        let mut cmd = CopyCommand::default();
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("{} expects string", self.current_token.literal));
         }
 
-        let mut args = Vec::new();
+        let mut text = String::new();
         while self.peek_token.token_type == TokenType::String {
             self.next_token();
-            args.push(CommandArg::Text(self.current_token.literal.clone()));
+            text.push_str(&self.current_token.literal.clone());
         }
 
-        cmd.args = Some(args);
+        cmd.text = text;
         Ok(cmd)
     }
 
