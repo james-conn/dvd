@@ -193,10 +193,15 @@ impl FromStr for WaitMode {
 
     fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
         // Normalize the string
-        match input {
+        let normalized = input.to_lowercase();
+
+        match normalized.as_str() {
             "line" => Ok(WaitMode::Line),
             "screen" => Ok(WaitMode::Screen),
-            _ => Err(anyhow!("Wait mode not recognized")),
+            _ => Err(anyhow!(
+                "Wait mode '{}' not recognized. Valid options: line, screen",
+                input
+            )),
         }
     }
 }
