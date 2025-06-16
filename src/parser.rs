@@ -111,13 +111,6 @@ impl fmt::Display for CommandOption {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Command {
-    pub command_type: TokenType,
-    pub option: Option<CommandOption>,
-    pub args: Option<Vec<CommandArg>>, // Ever a vector when series of keys
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct TypeCommand {
     pub rate: Option<Duration>,
     pub text: String,
@@ -128,7 +121,7 @@ pub struct SleepCommand {
     pub duration: Duration,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct OutputCommand {
     pub path: PathBuf,
     pub format: String, // "gif", "mp4", "webm"
@@ -229,22 +222,6 @@ pub enum Commands {
     Env(EnvCommand),
     Hide, // No additional data needed
     Show, // No additional data needed
-}
-
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let args_str = if let Some(args) = &self.args {
-            CommandArg::join_args(args)
-        } else {
-            String::new()
-        };
-
-        if let Some(options) = &self.option {
-            write!(f, "{} {} {}", self.command_type, options, args_str)
-        } else {
-            write!(f, "{} {}", self.command_type, args_str)
-        }
-    }
 }
 
 pub struct Parser<'source> {
@@ -563,12 +540,8 @@ impl<'source> Parser<'source> {
         cmd
     }
 
-    fn parse_output(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Output,
-            option: None,
-            args: None,
-        };
+    fn parse_output(&mut self) -> Result<OutputCommand> {
+        let mut cmd = OutputCommand::default();
 
         if self.peek_token.token_type != TokenType::String {
             return Err(anyhow!("Expected file path after output"));
@@ -576,15 +549,17 @@ impl<'source> Parser<'source> {
 
         let path = Path::new(&self.peek_token.literal);
         if let Some(ext) = path.extension() {
-            cmd.option = Some(CommandOption::Format(format!(".{}", ext.to_string_lossy())));
+            // TODO update the enum of supported formats and have a FromStr impl on it
+            cmd.format = format!(".{}", ext.to_string_lossy());
         } else {
-            cmd.option = Some(CommandOption::Format(".png".to_string()));
+            cmd.format = String::from(".png");
             if !self.peek_token.literal.ends_with('/') {
                 return Err(anyhow!("Expected folder with trailing slash"));
             }
         }
 
-        cmd.args = Some(vec![CommandArg::FilePath(self.peek_token.literal.clone())]);
+        // Parse the path from the next token (Should be the path)
+        cmd.path = PathBuf::from(self.peek_token.literal.clone());
         self.next_token();
         Ok(cmd)
     }
