@@ -3,6 +3,24 @@ name = "dvd"
 version = "0.1.0"
 edition = "2024"
 
+# [workspace]
+# resolver = "3"
+# members = ["dvd-tokenizer", "dvd-video", "dvd-renderer", "dvd-cli", "dvd-core"]
+# Input through the CLI
+# Core process in the main-loop, paging out to the renderer
+# Video compiles frames into video, Gif, txt, or SVG
+# Github actions workflow
+# This process could also let us make an alternative to termshot using the crates?
+# https://github.com/homeport/termshot -- By just using the renderer and having the resultant image be the output instead.
+# From the .dvd format (encapuslated in dvd-tokenizer)
+# https://github.com/marionebl/svg-term-cli
+# https://github.com/nbedos/termtosvg
+# https://github.com/homeport/termshot
+
 [dependencies]
 anyhow = "1.0"
+alacritty_terminal = { version = "0.25.1-dev", git = "https://github.com/alacritty/alacritty.git", package = "alacritty_terminal" }
+clap = { version = "4.5.39", features = ["derive"] }
+dvd-render = { version = "0.2.0", features = ["video"] }
 regex = "1.0"
+pollster = "0.4.0"
