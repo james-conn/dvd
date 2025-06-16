@@ -1,10 +1,11 @@
 // src/parser.rs
 use crate::lexer::Lexer;
 use crate::token::{KEYWORDS, Token, TokenType, is_modifier, is_setting};
-use anyhow::{Result, anyhow};
+use anyhow::{Error, Result, anyhow};
 use regex::Regex;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
@@ -248,6 +249,78 @@ pub enum Commands {
     Show, // No additional data needed
 }
 
+impl From<TypeCommand> for Commands {
+    fn from(cmd: TypeCommand) -> Self {
+        Commands::Type(cmd)
+    }
+}
+
+impl From<SleepCommand> for Commands {
+    fn from(cmd: SleepCommand) -> Self {
+        Commands::Sleep(cmd)
+    }
+}
+
+impl From<OutputCommand> for Commands {
+    fn from(cmd: OutputCommand) -> Self {
+        Commands::Output(cmd)
+    }
+}
+
+impl From<KeyCommand> for Commands {
+    fn from(cmd: KeyCommand) -> Self {
+        Commands::Key(cmd)
+    }
+}
+
+impl From<CtrlCommand> for Commands {
+    fn from(cmd: CtrlCommand) -> Self {
+        Commands::Ctrl(cmd)
+    }
+}
+
+impl From<SetCommand> for Commands {
+    fn from(cmd: SetCommand) -> Self {
+        Commands::Set(cmd)
+    }
+}
+
+impl From<RequireCommand> for Commands {
+    fn from(cmd: RequireCommand) -> Self {
+        Commands::Require(cmd)
+    }
+}
+
+impl From<WaitCommand> for Commands {
+    fn from(cmd: WaitCommand) -> Self {
+        Commands::Wait(cmd)
+    }
+}
+
+impl From<ScreenshotCommand> for Commands {
+    fn from(cmd: ScreenshotCommand) -> Self {
+        Commands::Screenshot(cmd)
+    }
+}
+
+impl From<CopyCommand> for Commands {
+    fn from(cmd: CopyCommand) -> Self {
+        Commands::Copy(cmd)
+    }
+}
+
+impl From<EnvCommand> for Commands {
+    fn from(cmd: EnvCommand) -> Self {
+        Commands::Env(cmd)
+    }
+}
+
+impl From<()> for Commands {
+    fn from(_: ()) -> Self {
+        Commands::Paste
+    }
+}
+
 pub struct Parser<'source> {
     lexer: &'source mut Lexer<'source>,
     errors: Vec<ParseError>,
@@ -315,11 +388,11 @@ impl<'source> Parser<'source> {
             | TokenType::Right
             | TokenType::Up
             | TokenType::PageUp
-            | TokenType::PageDown => {
-                Ok(self.parse_keypress(self.current_token.token_type.clone())?)
-            }
+            | TokenType::PageDown => Ok(self
+                .parse_keypress(self.current_token.token_type.clone())
+                .into()),
             TokenType::Set => Ok(self.parse_set()?),
-            TokenType::Output => Ok(self.parse_output()?),
+            TokenType::Output => Ok(self.parse_output()?.into()),
             TokenType::Sleep => Ok(self.parse_sleep()?),
             TokenType::Type => Ok(self.parse_type()?),
             TokenType::Ctrl => Ok(self.parse_ctrl()?),
@@ -337,14 +410,8 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_wait(&mut self) -> Result<Command> {
-        let mut cmd = Command {
-            command_type: TokenType::Wait,
-            option: None,
-            args: None,
-        };
-
-        let mut args = Vec::new();
+    fn parse_wait(&mut self) -> Result<WaitCommand> {
+        let mut cmd = WaitCommand::default();
 
         if self.peek_token.token_type == TokenType::Plus {
             self.next_token();
@@ -353,15 +420,15 @@ impl<'source> Parser<'source> {
             {
                 return Err(anyhow!("Wait+ expects Line or Screen"));
             }
-            args.push(CommandArg::WaitMode(self.peek_token.literal.clone()));
+            cmd.mode = self.peek_token.literal.clone().parse()?;
             self.next_token();
         } else {
-            args.push(CommandArg::WaitMode("Line".to_string()));
+            cmd.mode = WaitMode::Line;
         }
 
         let speed = self.parse_speed();
         if speed != Duration::default() {
-            cmd.option = Some(CommandOption::Rate(speed));
+            cmd.timeout = Some(speed);
         }
 
         // Handle wait regex
@@ -374,10 +441,11 @@ impl<'source> Parser<'source> {
                     self.current_token.literal
                 ));
             }
-            args.push(CommandArg::RegexPattern(self.current_token.literal.clone()));
+
+            // Assign the built regex
+            cmd.pattern = Some(self.current_token.literal.clone().parse()?);
         }
 
-        cmd.args = Some(args);
         Ok(cmd)
     }
 
