@@ -21,6 +21,12 @@ impl Default for Token {
     }
 }
 
+impl Default for TokenType {
+    fn default() -> Self {
+        TokenType::Illegal
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenType {
     // Operators

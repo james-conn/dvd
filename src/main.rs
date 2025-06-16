@@ -1,13 +1,64 @@
-// src/main.rs (for testing)
+use alacritty_terminal::event::Event;
+use alacritty_terminal::event::{EventListener, VoidListener, WindowSize};
+use alacritty_terminal::event_loop::EventLoop;
+use alacritty_terminal::sync::FairMutex;
+use alacritty_terminal::tty::{self, Options, Shell};
+use alacritty_terminal::{
+    Term,
+    term::{Config, test::TermSize},
+};
 use clap;
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
+use dvd_render;
+use std::collections::HashMap;
+use std::env::current_dir;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::{Condvar, Mutex};
+use std::thread::sleep;
+use std::time::Duration;
+
+const WIDTH: usize = 50;
+const HEIGHT: usize = 50;
 
 enum Outputs {
     Movie,
     Gif,
     SVG,
     CSV,
+}
+
+#[derive(Clone)]
+struct Listener {
+    stuff: Arc<Mutex<GridStuff>>,
+    term: std::sync::OnceLock<Arc<FairMutex<Term<Listener>>>>,
+}
+
+impl EventListener for Listener {
+    fn send_event(&self, event: Event) {
+        match event {
+            Event::Wakeup => {
+                println!("AAAA");
+                let term = self.term.get().unwrap().lock();
+                println!("BBB")
+            }
+            _ => (),
+        }
+    }
+}
+
+struct GridStuff {
+    grid: Grid<WIDTH, HEIGHT>,
+    grid_sequence: GridSequence<WIDTH, HEIGHT>,
+}
+
+impl Default for GridStuff {
+    fn default() -> Self {
+        Self {
+            grid: Grid::default(),
+            grid_sequence: GridSequence::new(Px(30.0)),
+        }
+    }
 }
 
 impl Outputs {
@@ -130,41 +181,152 @@ pub enum Commands {
     // },
 }
 
-fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
-    let input = r#"
-    Output examples/gum/pager.gif
+use dvd_render::{ab_glyph, image, prelude::*};
+use pollster::FutureExt;
 
-Set Padding 32
-Set FontSize 16
-Set Height 600
+fn type_line<const W: usize, const H: usize>(
+    y: usize,
+    text: &str,
+    grid: &mut Grid<W, H>,
+    seq: &mut GridSequence<W, H>,
+) {
+    for (x, c) in text.chars().enumerate() {
+        grid.set(
+            x,
+            y,
+            GridCell::new_fg_color(c, image::Rgba::<u8>([255, 0, 0, 255])),
+        );
+        seq.append(Frame::single(grid.clone()));
+    }
+}
 
-Type "gum pager < ~/src/gum/README.md --border normal"
-Sleep 0.5s
-Enter
-Sleep 1s
-Down@15ms 40
-Sleep 0.5s
-Up@15ms 30
-Sleep 0.5s
-Down@15ms 20
-Sleep 2s
-
-"#;
-
-    use dvd::*;
-    let mut lexer = Lexer::new(input);
-    let mut parser = Parser::new(&mut lexer);
-
-    let commands = parser.parse();
-
-    for cmd in commands {
-        println!("{:#?}", cmd);
+fn write_line<const W: usize, const H: usize>(
+    y: usize,
+    text: &str,
+    grid: &mut Grid<W, H>,
+    seq: &mut GridSequence<W, H>,
+) {
+    for (x, c) in text.chars().enumerate() {
+        grid.set(
+            x,
+            y,
+            GridCell::new_full_color(
+                c,
+                image::Rgba::<u8>([0, 0, 0, 255]),
+                image::Rgba::<u8>([255, 255, 255, 255]),
+            ),
+        );
     }
 
-    for error in parser.errors() {
-        eprintln!("Error: {}", error);
+    seq.append(Frame::variable(
+        grid.clone(),
+        core::num::NonZeroU8::new(5).unwrap(),
+    ));
+}
+
+//fn write_grid<const W: usize, const H: usize>(grid: &mut Grid<W, H>, a_grid: &AGrid<Cell>) {
+//	for c in a_grid.display_iter() {
+//		grid.set(*c.point.column, *c.point.line as usize, GridCell::new(c.cell.c));
+//	}
+//}
+
+fn main() {
+    let listener = Listener {
+        stuff: Arc::new(Mutex::new(GridStuff::default())),
+        term: std::sync::OnceLock::new(),
+    };
+
+    let term = Term::new(
+        Config::default(),
+        &TermSize::new(WIDTH, HEIGHT),
+        listener.clone(),
+    );
+
+    //let term = term
+    let shell = Shell::new("/bin/sh".to_string(), vec![]);
+
+    let pty_options = Options {
+        shell: Some(shell),
+        working_directory: Some(current_dir().unwrap()),
+        drain_on_exit: true,
+        env: HashMap::default(),
+    };
+
+    let pty = tty::new(
+        &pty_options,
+        WindowSize {
+            num_lines: 50,
+            num_cols: 50,
+            cell_width: 1,
+            cell_height: 1,
+        },
+        59,
+    )
+    .unwrap();
+
+    // bell = ignore
+    // wakeup = ignore
+    //
+
+    let term = Arc::new(FairMutex::new(term));
+    let _ = listener.term.set(term.clone());
+
+    let loopp = EventLoop::new(term.clone(), listener, pty, true, false).unwrap();
+
+    loopp.spawn();
+
+    println!("CCC");
+    sleep(Duration::from_millis(500));
+    let term_term = term.lock();
+    println!("DDD");
+
+    let mut grid = Grid::<WIDTH, HEIGHT>::default();
+
+    for cell in term_term.grid().display_iter() {
+        grid.set(
+            cell.point.column.0,
+            cell.point.line.0 as usize,
+            GridCell::new(cell.cell.c),
+        );
     }
 
-    Ok(())
+    let mut seq = GridSequence::new(Pt(40.0));
+    seq.framerate = core::num::NonZeroU8::new(10).unwrap();
+
+    seq.append(Frame::variable(
+        grid,
+        core::num::NonZeroU8::new(10).unwrap(),
+    ));
+
+    // type_line(
+    //     0,
+    //     "[james@odin:~/Documents/dvd-test]$ ls",
+    //     &mut grid,
+    //     &mut seq,
+    // );
+    // write_line(1, "Documents Downloads scripts Videos", &mut grid, &mut seq);
+    // type_line(2, "cd Downloads", &mut grid, &mut seq);
+    // type_line(3, "ls", &mut grid, &mut seq);
+    // write_line(4, "cheese.txt", &mut grid, &mut seq);
+    // type_line(5, "cat cheese.txt", &mut grid, &mut seq);
+    // write_line(6, "I love cheese!", &mut grid, &mut seq);
+    // type_line(
+    //     7,
+    //     "Ų Ů Ũ Ẃ Ŵ Ẅ Ẁ Ý Ŷ Ÿ Ỵ Ỳ Ỷ Ȳ Ỹ Ź Ž Ż á ă â ä à ā ą å ã æ ǽ ć č ç ĉ ċ ð ď đ",
+    //     &mut grid,
+    //     &mut seq,
+    // );
+
+    //let mut grid = Grid::default();
+    //write_grid(&mut grid, a_grid);
+    //seq.append(Frame::variable(grid, core::num::NonZeroU8::new(10).unwrap()));
+
+    let font = ab_glyph::FontRef::try_from_slice(include_bytes!(
+        "/Users/philocalyst/Library/Fonts/HackNerdFont-BoldItalic.ttf"
+    ))
+    .unwrap();
+    let renderer = WgpuRenderer::new(font, seq).block_on();
+
+    let encoder = dvd_render::video::DvdEncoder::new(renderer);
+    encoder.save_video_to("/Users/philocalyst/Library/Fonts/video.mkv");
 }

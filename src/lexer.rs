@@ -186,21 +186,10 @@ impl<'a> Lexer<'a> {
 
     fn read_number(&mut self) -> String {
         let start_pos = self.position - 1;
-        let mut seen_dot = false;
-
-        // Iterate until the next char is no longer a number
-        while self.current_char.map_or(false, |ch| {
-            if ch == '.' {
-                if seen_dot {
-                    false // Already seen a dot, so this is invalid
-                } else {
-                    seen_dot = true;
-                    true
-                }
-            } else {
-                ch.is_ascii_digit()
-            }
-        }) {
+        while self
+            .current_char // TODO: Recognize an invalid sequence and throw an error or an optional here. For a case like (0.0.0.0) -- which seems valid in this parsing logic so far
+            .map_or(false, |ch| ch.is_ascii_digit() || ch == '.')
+        {
             self.read_char();
         }
         self.input[start_pos..self.position - 1].to_string()
