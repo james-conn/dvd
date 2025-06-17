@@ -378,7 +378,7 @@ fn main() {
     //seq.append(Frame::variable(grid, core::num::NonZeroU8::new(10).unwrap()));
 
     let font = ab_glyph::FontRef::try_from_slice(include_bytes!(
-        "/Users/philocalyst/Library/Fonts/HackNerdFont-BoldItalic.ttf"
+        "../fonts/liberation_mono/LiberationMono-Regular.ttf"
     ))
     .unwrap();
     let renderer = WgpuRenderer::new(font, seq).block_on();
