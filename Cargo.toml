@@ -18,9 +18,9 @@ edition = "2024"
 # https://github.com/homeport/termshot
 
 [dependencies]
-anyhow = "1.0"
-alacritty_terminal = { version = "0.25.1-dev", path = "/Users/philocalyst/Downloads/alacritty/alacritty_terminal"}
-clap = { version = "4.5.39", features = ["derive"] }
-dvd-render = { version = "0.2.0", features = ["video"] }
-regex = "1.0"
-pollster = "0.4.0"
+anyhow = "1"
+alacritty_terminal = { version = "0.25.1-dev", git = "https://github.com/alacritty/alacritty.git" }
+clap = { version = "4.5", features = ["derive"] }
+dvd-render = { version = "0.2", features = ["video"] }
+regex = "1"
+pollster = "0.4"
