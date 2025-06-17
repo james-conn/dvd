@@ -4,6 +4,7 @@ use alacritty_terminal::event_loop::EventLoop;
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::sync::FairMutex;
 use alacritty_terminal::tty::{self, EventedPty, EventedReadWrite, Options, Shell};
+use alacritty_terminal::vte::ansi::Color;
 use alacritty_terminal::vte::ansi::Handler;
 use alacritty_terminal::{
     Term,
@@ -12,6 +13,9 @@ use alacritty_terminal::{
 use clap;
 use clap::{Parser, Subcommand};
 use dvd_render;
+use dvd_render::image::Rgba;
+
+// Standard library imports
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::env::current_dir;
@@ -291,15 +295,15 @@ fn main() {
     let _ = listener.term.set(term.clone());
 
     let loopp = EventLoop::new(term.clone(), listener, pty, true, false).unwrap();
-
     loopp.spawn();
 
+    // Now you can use pty_writer in your thread
     let term_clone = Arc::clone(&term);
     thread::spawn(move || {
         thread::sleep(Duration::from_millis(800));
 
         // Write to the actual shell process
-        pty_writer.write_all(b"ls\n").unwrap();
+        pty_writer.write_all(b"nvim\n").unwrap();
         pty_writer.flush().unwrap(); // Important: flush to ensure it's sent
 
         thread::sleep(Duration::from_millis(10));
@@ -339,6 +343,10 @@ fn main() {
 
         count += 1;
         println!("{count}");
+
+        if (count == 10) {
+            break;
+        }
     }
 
     seq.append(Frame::variable(
