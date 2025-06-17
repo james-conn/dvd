@@ -268,7 +268,7 @@ fn main() {
         env: HashMap::default(),
     };
 
-    let pty = tty::new(
+    let mut pty = tty::new(
         &pty_options,
         WindowSize {
             num_lines: 50,
