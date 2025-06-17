@@ -284,6 +284,8 @@ fn main() {
     // wakeup = ignore
     //
 
+    let mut pty_writer = pty.writer().try_clone().unwrap(); // Clone the File handle
+
     let term = Arc::new(FairMutex::new(term));
     let _ = listener.term.set(term.clone());
 
@@ -291,23 +293,16 @@ fn main() {
 
     loopp.spawn();
 
-    let mut grid = Grid::<WIDTH, HEIGHT>::default();
-
-    let mut seq = GridSequence::new(Pt(40.0));
-    seq.framerate = core::num::NonZeroU8::new(10).unwrap();
-
     let term_clone = Arc::clone(&term);
     thread::spawn(move || {
         thread::sleep(Duration::from_millis(800));
 
-        let mut term_term = term_clone.lock();
-        term_term.input('l');
-        term_term.input('s');
-        term_term.newline();
-        term_term.carriage_return();
-        term_term.linefeed();
-        thread::sleep(Duration::from_millis(1000));
-        println!("hiiii");
+        // Write to the actual shell process
+        pty_writer.write_all(b"ls\n").unwrap();
+        pty_writer.flush().unwrap(); // Important: flush to ensure it's sent
+
+        thread::sleep(Duration::from_millis(10));
+        println!("Command sent to shell");
     });
 
     let mut count = 0;
