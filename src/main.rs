@@ -52,6 +52,7 @@ impl EventListener for Listener {
                 }
             }
             Event::Exit => {
+                println!("{:?}", event);
                 *self.mister.borrow_mut() = None; // This drops the sender
             }
             _ => println!("{:?}", event),
