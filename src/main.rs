@@ -1,8 +1,10 @@
 use alacritty_terminal::event::Event;
 use alacritty_terminal::event::{EventListener, VoidListener, WindowSize};
 use alacritty_terminal::event_loop::EventLoop;
+use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::sync::FairMutex;
-use alacritty_terminal::tty::{self, Options, Shell};
+use alacritty_terminal::tty::{self, EventedPty, EventedReadWrite, Options, Shell};
+use alacritty_terminal::vte::ansi::Handler;
 use alacritty_terminal::{
     Term,
     term::{Config, test::TermSize},
@@ -10,13 +12,15 @@ use alacritty_terminal::{
 use clap;
 use clap::{Parser, Subcommand};
 use dvd_render;
+use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::env::current_dir;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, channel};
 use std::sync::{Condvar, Mutex};
-use std::thread::sleep;
+use std::thread::{self, sleep};
 use std::time::Duration;
 
 const WIDTH: usize = 50;
@@ -31,7 +35,7 @@ enum Outputs {
 
 #[derive(Clone)]
 struct Listener {
-    mister: mpsc::Sender<()>,
+    mister: RefCell<Option<mpsc::Sender<()>>>,
     stuff: Arc<Mutex<GridStuff>>,
     term: std::sync::OnceLock<Arc<FairMutex<Term<Listener>>>>,
 }
@@ -40,11 +44,16 @@ impl EventListener for Listener {
     fn send_event(&self, event: Event) {
         match event {
             Event::Wakeup => {
-                println!("AAAA");
-                self.mister.send(()).unwrap();
-                println!("BBB")
+                if let Some(ref sender) = *self.mister.borrow() {
+                    println!("AAAA");
+                    sender.send(()).unwrap();
+                    println!("BBB");
+                }
             }
-            _ => (),
+            Event::Exit => {
+                *self.mister.borrow_mut() = None; // This drops the sender
+            }
+            _ => println!("{:?}", event),
         }
     }
 }
@@ -234,6 +243,8 @@ fn write_line<const W: usize, const H: usize>(
 
 fn main() {
     let (sender, receiver) = channel();
+
+    let sender = RefCell::new(Some(sender));
     let listener = Listener {
         mister: sender,
         stuff: Arc::new(Mutex::new(GridStuff::default())),
@@ -284,13 +295,23 @@ fn main() {
     let mut seq = GridSequence::new(Pt(40.0));
     seq.framerate = core::num::NonZeroU8::new(10).unwrap();
 
+    let term_clone = Arc::clone(&term);
+    thread::spawn(move || {
+        thread::sleep(Duration::from_millis(800));
+
+        let mut term_term = term_clone.lock();
+        term_term.input('l');
+        term_term.input('s');
+        term_term.newline();
+        term_term.carriage_return();
+        term_term.linefeed();
+        thread::sleep(Duration::from_millis(1000));
+        println!("hiiii");
+    });
+
     let mut count = 0;
     while let Ok(()) = receiver.recv() {
-        print!("hiii");
-
         let term_term = term.lock();
-
-        print!("hiiJFKLD:Fi");
 
         for cell in term_term.grid().display_iter() {
             grid.set(
@@ -298,18 +319,16 @@ fn main() {
                 cell.point.line.0 as usize,
                 GridCell::new(cell.cell.c),
             );
-            count += 1;
-            println!("{count}");
         }
-
-        print!("MMMMMMMI");
-        drop(term_term);
-        print!("MMMMMMMI");
 
         seq.append(Frame::variable(
             grid.clone(),
             core::num::NonZeroU8::new(10).unwrap(),
         ));
+
+        count += 1;
+        println!("{count}");
+        break;
     }
 
     seq.append(Frame::variable(
@@ -340,6 +359,12 @@ fn main() {
     //write_grid(&mut grid, a_grid);
     //seq.append(Frame::variable(grid, core::num::NonZeroU8::new(10).unwrap()));
 
+    let grid = capture_command_output("bash", vec!["-c".into(), "ls".into()]).unwrap();
+    seq.append(Frame::variable(
+        grid,
+        core::num::NonZeroU8::new(10).unwrap(),
+    ));
+
     let font = ab_glyph::FontRef::try_from_slice(include_bytes!(
         "/Users/philocalyst/Library/Fonts/HackNerdFont-BoldItalic.ttf"
     ))
@@ -348,4 +373,71 @@ fn main() {
 
     let encoder = dvd_render::video::DvdEncoder::new(renderer);
     encoder.save_video_to("/Users/philocalyst/Library/Fonts/video.mkv");
+}
+
+fn capture_command_output(command: &str, args: Vec<String>) -> anyhow::Result<Grid<WIDTH, HEIGHT>> {
+    let mut pty = alacritty_terminal::tty::new(
+        &alacritty_terminal::tty::Options {
+            shell: Some(alacritty_terminal::tty::Shell::new(
+                command.to_string(),
+                args,
+            )),
+            working_directory: Some(current_dir().unwrap()),
+            env: HashMap::new(),
+            drain_on_exit: false,
+        },
+        alacritty_terminal::event::WindowSize {
+            num_lines: HEIGHT as u16,
+            num_cols: WIDTH as u16,
+            cell_width: 1,
+            cell_height: 1,
+        },
+        0,
+    )?;
+
+    // Create your own simple terminal state tracker
+    let mut grid = Grid::<WIDTH, HEIGHT>::default();
+    let mut cursor_x = 0;
+    let mut cursor_y = 0;
+
+    let mut stdout_buf = [0; 4096];
+
+    loop {
+        // Check if child process has exited
+        if let Some(alacritty_terminal::tty::ChildEvent::Exited(_)) = pty.next_child_event() {
+            break;
+        }
+
+        // Read from PTY
+        match pty.reader().read(&mut stdout_buf) {
+            Ok(0) => break, // EOF
+            Ok(read) => {
+                for &byte in &stdout_buf[..read] {
+                    // Simple character processing (you might want to handle ANSI escapes)
+                    match byte {
+                        b'\n' => {
+                            cursor_y += 1;
+                            cursor_x = 0;
+                        }
+                        b'\r' => {
+                            cursor_x = 0;
+                        }
+                        c if c >= 32 && c < 127 => {
+                            if cursor_x < WIDTH && cursor_y < HEIGHT {
+                                grid.set(cursor_x, cursor_y, GridCell::new(c as char));
+                                cursor_x += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Err(_) => break,
+        }
+
+        // Small delay to prevent busy waiting
+        thread::sleep(Duration::from_millis(10));
+    }
+
+    Ok(grid)
 }
