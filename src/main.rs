@@ -306,6 +306,13 @@ fn main() {
         println!("Command sent to shell");
     });
 
+    let term_clone = Arc::clone(&term);
+
+    let mut grid = Grid::<WIDTH, HEIGHT>::default();
+
+    let mut seq = GridSequence::new(Pt(40.0));
+    seq.framerate = core::num::NonZeroU8::new(10).unwrap();
+
     let mut count = 0;
     while let Ok(()) = receiver.recv() {
         let term_term = term.lock();
