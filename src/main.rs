@@ -318,10 +318,17 @@ fn main() {
         let term_term = term.lock();
 
         for cell in term_term.grid().display_iter() {
+            // let fg_color = cell.cell.fg;
+            // let bg_color = cell.cell.bg;
+            let fg_color = Rgba([124, 40, 32, 128]);
+            let bg_color = Rgba([20, 5, 28, 128]);
+
+            println!("{:?}", fg_color);
+
             grid.set(
                 cell.point.column.0,
                 cell.point.line.0 as usize,
-                GridCell::new(cell.cell.c),
+                GridCell::new_full_color(cell.cell.c, fg_color, bg_color),
             );
         }
 
