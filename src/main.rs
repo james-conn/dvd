@@ -325,7 +325,6 @@ fn main() {
 
         count += 1;
         println!("{count}");
-        break;
     }
 
     seq.append(Frame::variable(
@@ -355,12 +354,6 @@ fn main() {
     //let mut grid = Grid::default();
     //write_grid(&mut grid, a_grid);
     //seq.append(Frame::variable(grid, core::num::NonZeroU8::new(10).unwrap()));
-
-    let grid = capture_command_output("bash", vec!["-c".into(), "ls".into()]).unwrap();
-    seq.append(Frame::variable(
-        grid,
-        core::num::NonZeroU8::new(10).unwrap(),
-    ));
 
     let font = ab_glyph::FontRef::try_from_slice(include_bytes!(
         "/Users/philocalyst/Library/Fonts/HackNerdFont-BoldItalic.ttf"
