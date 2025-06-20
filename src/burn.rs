@@ -21,6 +21,8 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, channel};
 use std::time::Duration;
 use crate::cli::BurnArgs;
+use crate::lexer::Lexer;
+use crate::parser::{Parser, Commands};
 
 const WIDTH: usize = 50;
 const HEIGHT: usize = 50;
@@ -51,6 +53,8 @@ impl EventListener for Listener {
 }
 
 pub fn burn(args: &BurnArgs) -> Result<(), ()> {
+	let in_str = std::fs::read_to_string(&args.input_file).unwrap();
+
 	let (sender, receiver) = channel();
 
 	let sender = RefCell::new(Some(sender));
@@ -96,14 +100,25 @@ pub fn burn(args: &BurnArgs) -> Result<(), ()> {
 
 	// Now you can use pty_writer in your thread
 	std::thread::spawn(move || {
-		std::thread::sleep(Duration::from_millis(800));
+		let mut lexer = Lexer::new(&in_str);
+		let mut parser = Parser::new(&mut lexer);
+		let mut utf8_buf = [0u8; 4];
 
-		// Write to the actual shell process
-		pty_writer.write_all(b"nvim\n").unwrap();
-		pty_writer.flush().unwrap(); // Important: flush to ensure it's sent
-
-		std::thread::sleep(Duration::from_millis(10));
-		println!("Command sent to shell");
+		for command in parser.parse().into_iter() {
+			match command {
+				Commands::Type(type_cmd) => {
+					let rate = type_cmd.rate.unwrap_or(Duration::from_millis(50));
+					for c in type_cmd.text.chars() {
+						let len = c.len_utf8();
+						c.encode_utf8(&mut utf8_buf);
+						pty_writer.write_all(&utf8_buf[..len]).unwrap();
+						pty_writer.flush().unwrap();
+						std::thread::sleep(rate);
+					}
+				},
+				_ => todo!()
+			}
+		}
 	});
 
 	let mut grid = Grid::<WIDTH, HEIGHT>::default();
@@ -155,7 +170,7 @@ pub fn burn(args: &BurnArgs) -> Result<(), ()> {
 	let renderer = WgpuRenderer::new(font, seq).block_on();
 
 	let encoder = dvd_render::video::DvdEncoder::new(renderer);
-	encoder.save_video_to(&args.output);
+	encoder.save_video_to(&args.output_file);
 
 	Ok(())
 }
