@@ -1,8 +1,19 @@
-// src/lib.rs
-pub mod lexer;
-pub mod parser;
-pub mod token;
+pub mod cli;
 
-pub use lexer::*;
-pub use parser::*;
-pub use token::*;
+mod lexer;
+mod parser;
+mod token;
+
+mod burn;
+
+pub fn run(cli: cli::Cli) -> std::process::ExitCode {
+	let output = match cli.command {
+		cli::Commands::Burn(args) => burn::burn(&args),
+		_ => todo!()
+	};
+
+	match output {
+		Ok(()) => std::process::ExitCode::SUCCESS,
+		Err(()) => std::process::ExitCode::FAILURE
+	}
+}
