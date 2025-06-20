@@ -188,8 +188,9 @@ pub struct WaitCommand {
     pub timeout: Option<Duration>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum WaitMode {
+    #[default]
     Line,
     Screen,
 }
@@ -209,12 +210,6 @@ impl FromStr for WaitMode {
                 input
             )),
         }
-    }
-}
-
-impl Default for WaitMode {
-    fn default() -> Self {
-        WaitMode::Line
     }
 }
 
@@ -440,7 +435,7 @@ impl<'source> Parser<'source> {
         if self.peek_token.token_type == TokenType::Regex {
             self.next_token();
             // Make sure it's valid
-            if let Err(_) = Regex::new(&self.current_token.literal) {
+            if Regex::new(&self.current_token.literal).is_err() {
                 return Err(anyhow!(
                     "Invalid regular expression '{}': invalid regex",
                     self.current_token.literal
@@ -974,10 +969,11 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_env(&mut self) -> Result<EnvCommand> {
-        let mut cmd = EnvCommand::default();
-
-        // The first argument will of course be the variable
-        cmd.variable = self.peek_token.literal.clone();
+        let mut cmd = EnvCommand {
+            // The first argument will of course be the variable
+            variable: self.peek_token.literal.clone(),
+            ..Default::default()
+        };
 
         self.next_token();
 
@@ -1001,7 +997,7 @@ impl<'source> Parser<'source> {
         }
 
         let path = Path::new(&self.peek_token.literal);
-        if path.extension().map_or(true, |ext| ext != "png") {
+        if path.extension().is_none_or(|ext| ext != "png") {
             self.next_token();
             return Err(anyhow!("Expected file with .png extension"));
         }

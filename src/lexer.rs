@@ -125,7 +125,7 @@ impl<'a> Lexer<'a> {
             Some(ch) => {
                 // Stand up and pay attention if it's either a straight-up number, or some kind of fraction.
                 if ch.is_ascii_digit()
-                    || (ch == '.' && self.peek_char().map_or(false, |c| c.is_ascii_digit()))
+                    || (ch == '.' && self.peek_char().is_some_and(|c| c.is_ascii_digit()))
                 {
                     token.literal = self.read_number();
                     token.token_type = TokenType::Number;
@@ -160,7 +160,7 @@ impl<'a> Lexer<'a> {
             self.read_char();
             if self
                 .current_char
-                .map_or(true, |ch| ch == '\n' || ch == '\r')
+                .is_none_or(|ch| ch == '\n' || ch == '\r')
             // Read until some kind of carrige return and then break.
             {
                 break;
@@ -176,7 +176,7 @@ impl<'a> Lexer<'a> {
             self.read_char();
             if self
                 .current_char
-                .map_or(true, |ch| ch == end_char || ch == '\n' || ch == '\r')
+                .is_none_or(|ch| ch == end_char || ch == '\n' || ch == '\r')
             {
                 break;
             }
@@ -188,7 +188,7 @@ impl<'a> Lexer<'a> {
         let start_pos = self.position - 1;
         while self
             .current_char // TODO: Recognize an invalid sequence and throw an error or an optional here. For a case like (0.0.0.0) -- which seems valid in this parsing logic so far
-            .map_or(false, |ch| ch.is_ascii_digit() || ch == '.')
+            .is_some_and(|ch| ch.is_ascii_digit() || ch == '.')
         {
             self.read_char();
         }
@@ -197,7 +197,7 @@ impl<'a> Lexer<'a> {
 
     fn read_identifier(&mut self) -> String {
         let start_pos = self.position - 1;
-        while self.current_char.map_or(false, |ch| {
+        while self.current_char.is_some_and(|ch| {
             ch.is_alphanumeric() || ch == '.' || ch == '-' || ch == '_' || ch == '/' || ch == '%'
         }) {
             self.read_char();
