@@ -118,10 +118,13 @@ pub enum Commands {
 
 #[derive(Args)]
 pub struct BurnArgs {
-	/// File name(s) of video output
-	#[arg(short, long, value_name = "FILE", value_parser = validate_output_path)]
-	pub output: PathBuf,
-	
 	/// Input tape file (use "-" for stdin)
-	file: Option<PathBuf>
+	pub input_file: PathBuf,
+
+	/// File name(s) of video output
+	#[arg(
+		value_parser = validate_output_path,
+		value_hint = clap::ValueHint::FilePath
+	)]
+	pub output_file: PathBuf
 }
